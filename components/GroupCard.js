@@ -20,6 +20,10 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
   const colorInputRef = useRef(null);
   const standingCopy = getStandingCopy(group.balance);
 
+  function stopCardOpen(event) {
+    event.stopPropagation();
+  }
+
   function handleColorButtonClick(event) {
     event.stopPropagation();
     colorInputRef.current?.click();
@@ -31,20 +35,24 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => onClick?.(group)}
+    <div
       className="group relative w-full overflow-hidden rounded-[28px] border border-white/50 text-left text-white shadow-[0_8px_20px_rgba(28,25,23,0.08),0_20px_40px_rgba(28,25,23,0.12)] transition duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.995]"
       style={{ backgroundColor: group.cardColor }}
-      aria-label={`Open ${group.name}`}
     >
+      <button
+        type="button"
+        onClick={() => onClick?.(group)}
+        className="absolute inset-0 z-0 rounded-[28px]"
+        aria-label={`Open ${group.name}`}
+      />
+
       <div className="absolute inset-0 bg-[rgba(28,25,23,0.16)]" />
 
       {group.needsAttention ? (
         <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-[#0070F3] shadow-[0_0_0_4px_rgba(255,255,255,0.18)]" />
       ) : null}
 
-      <div className={`relative aspect-[3.375/2.125] w-full ${collapsed ? "px-5 pt-2.5 pb-6" : "px-6 pt-5 pb-6"}`}>
+      <div className={`relative z-10 aspect-[3.375/2.24] w-full ${collapsed ? "px-5 pt-2.5 pb-6" : "px-6 pt-5 pb-8"} pointer-events-none`}>
         {collapsed ? (
           <div className="flex h-[30px] items-start justify-between gap-3">
             <h3
@@ -88,11 +96,11 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
             <div className="mt-auto">
               <div className="flex items-end justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold uppercase tracking-[0.12em] text-white/72">
-                    {standingCopy}
-                  </div>
-                  <div className="mt-2 text-[38px] font-bold leading-none tracking-[-0.06em] text-white">
-                    {formatBalance(group.balance)}
+                <div className="text-[13px] font-semibold uppercase tracking-[0.12em] text-white/72">
+                  {standingCopy}
+                </div>
+                <div className="mt-2 text-[38px] font-bold leading-none tracking-[-0.06em] text-white">
+                  {formatBalance(group.balance)}
                   </div>
                 </div>
 
@@ -101,8 +109,9 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
                     <>
                       <button
                         type="button"
+                        onPointerDown={stopCardOpen}
                         onClick={handleColorButtonClick}
-                        className="inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#0060D6] hover:bg-[#0060D6] hover:text-white active:scale-[0.96]"
+                        className="pointer-events-auto inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#0060D6] hover:bg-[#0060D6] hover:text-white active:scale-[0.96]"
                         aria-label={`Change ${group.name} card color`}
                       >
                         <FourSquaresIcon />
@@ -113,7 +122,7 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
                         type="color"
                         value={group.cardColor}
                         onChange={handleColorInputChange}
-                        className="sr-only"
+                        className="pointer-events-none sr-only"
                         tabIndex={-1}
                       />
                     </>
@@ -121,7 +130,7 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center justify-between gap-4 text-[12px] font-medium leading-none text-white/82">
+              <div className="mt-4 flex items-center justify-between gap-4 text-[12px] font-medium leading-[1.15] text-white/82">
                 <div className="truncate">
                   {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"} • code {group.code}
                 </div>
@@ -131,6 +140,6 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }

@@ -12,12 +12,13 @@ import {
   joinGroupByCode,
   loadUserGroupsBundle,
   normalizeInviteCode,
+  updateGroupCardColor,
 } from "../../lib/groupData";
 import {
   computeBalancesForGroup,
-  getDefaultColor,
   getDisplayNameFromUser,
   getMemberPreview,
+  getStableCardColor,
   needsAttention,
   sumGroupTotal,
 } from "../../lib/utils";
@@ -269,14 +270,18 @@ export default function GroupsPage() {
         expenseCount: groupExpenses.length,
         totalSpent,
         balance: currentBalance,
-        cardColor: cardColors[group.id] || group.card_color || group.color || getDefaultColor(index),
+        cardColor:
+          cardColors[group.id] ||
+          group.card_color ||
+          group.color ||
+          getStableCardColor(group.id || group.name, index),
         needsAttention: needsAttention(currentBalance),
       };
     });
   }, [cardColors, expensesByGroup, groups, membersByGroup, memberships]);
 
   const stackHeight = useMemo(
-    () => (displayGroups.length ? 226 + Math.max(0, displayGroups.length - 1) * 32 : 0),
+    () => (displayGroups.length ? 246 + Math.max(0, displayGroups.length - 1) * 30 : 0),
     [displayGroups.length],
   );
 
@@ -304,6 +309,7 @@ export default function GroupsPage() {
       try {
         const { group, code } = await createGroupWithMembership(supabase, user, profileName, name);
         persistCardColor(group.id, color);
+        await updateGroupCardColor(supabase, group.id, color);
         await loadGroupsData(user, { refresh: true });
         showToast(`${name} is ready`);
 
@@ -370,8 +376,9 @@ export default function GroupsPage() {
   }, [inviteCodeFromUrl, router]);
 
   const handleCardColorChange = useCallback(
-    (group, nextColor) => {
+    async (group, nextColor) => {
       persistCardColor(group.id, nextColor);
+      await updateGroupCardColor(supabase, group.id, nextColor);
       showToast(`${group.name} card updated`);
     },
     [persistCardColor, showToast],
@@ -386,7 +393,12 @@ export default function GroupsPage() {
           </IconButton>
 
           <div className="text-center">
-            <div className="text-[28px] font-bold leading-none text-[#1C1917]">Evenly</div>
+            <div
+              className="text-[30px] font-semibold leading-none tracking-[-0.04em] text-[#3A4E43]"
+              style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+            >
+              Evenly
+            </div>
             <div className="mt-1 text-[15px] font-normal text-[#6B7280]">Your groups</div>
           </div>
 
@@ -402,7 +414,7 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#0070F3] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0060D6] active:scale-[0.98]"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#5F7D6A] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#3A4E43] active:scale-[0.98]"
             >
               <PlusIcon />
               <span>Create group</span>
@@ -457,7 +469,7 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[#D1D5DB] bg-white p-6 text-center shadow-[0_8px_20px_rgba(28,25,23,0.04)] transition hover:-translate-y-0.5 hover:border-[#0070F3] hover:shadow-[0_12px_24px_rgba(0,112,243,0.08)] active:scale-[0.99]"
+              className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[#D1D5DB] bg-white p-6 text-center shadow-[0_8px_20px_rgba(28,25,23,0.04)] transition hover:-translate-y-0.5 hover:border-[#5F7D6A] hover:shadow-[0_12px_24px_rgba(95,125,106,0.12)] active:scale-[0.99]"
             >
               <div className="aspect-[3.375/2.125] w-full rounded-[24px] border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-6 py-6">
                 <div className="flex h-full flex-col items-center justify-center">
@@ -476,9 +488,9 @@ export default function GroupsPage() {
 
             <div className="mt-6 text-center">
               <button
-                type="button"
-                onClick={() => setIsJoinOpen(true)}
-                className="text-[15px] font-semibold text-[#0070F3] transition hover:text-[#0060D6]"
+              type="button"
+              onClick={() => setIsJoinOpen(true)}
+                className="text-[15px] font-semibold text-[#5F7D6A] transition hover:text-[#3A4E43]"
               >
                 Join with a code instead
               </button>
@@ -536,11 +548,6 @@ export default function GroupsPage() {
       <SettingsMenu
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onJoin={() => {
-          setPrefillJoinCode("");
-          setIsJoinOpen(true);
-        }}
-        onCreate={() => setIsCreateOpen(true)}
         onLogout={() => void handleLogout()}
       />
 

@@ -3,13 +3,6 @@
 import { useEffect } from "react";
 
 function MenuIcon({ type }) {
-  if (type === "plus") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#5F7D6A]" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-    );
-  }
   if (type === "gear") {
     return (
       <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6B7280]" fill="none" stroke="currentColor" strokeWidth="2">
@@ -35,7 +28,7 @@ function Chevron() {
   );
 }
 
-export default function SettingsMenu({ isOpen, onClose, onJoin, onCreate, onLogout }) {
+export default function SettingsMenu({ isOpen, onClose, onLogout }) {
   useEffect(() => {
     if (!isOpen) return;
     function onKeyDown(event) {
@@ -61,32 +54,6 @@ export default function SettingsMenu({ isOpen, onClose, onJoin, onCreate, onLogo
         onClick={(event) => event.stopPropagation()}
       >
         <div className="bg-white px-0 py-2">
-          <button
-            type="button"
-            className="flex h-[52px] w-full items-center justify-between border-b border-[#F3F4F6] px-4 text-left transition hover:bg-[#F7F7F5] active:bg-[#F3F4F6]"
-            onClick={() => handleItemClick(onJoin)}
-          >
-            <span className="flex items-center gap-3">
-              <MenuIcon type="plus" />
-              <span className="text-[16px] font-normal text-[#1C1917]">Join a group</span>
-            </span>
-            <Chevron />
-          </button>
-
-          <button
-            type="button"
-            className="flex h-[52px] w-full items-center justify-between border-b border-[#F3F4F6] px-4 text-left transition hover:bg-[#F7F7F5] active:bg-[#F3F4F6]"
-            onClick={() => handleItemClick(onCreate)}
-          >
-            <span className="flex items-center gap-3">
-              <MenuIcon type="plus" />
-              <span className="text-[16px] font-normal text-[#1C1917]">Create a group</span>
-            </span>
-            <Chevron />
-          </button>
-
-          <div className="my-2 h-px bg-[#E5E7EB]" />
-
           <button
             type="button"
             className="flex h-[52px] w-full items-center justify-between border-b border-[#F3F4F6] px-4 text-left transition hover:bg-[#F7F7F5] active:bg-[#F3F4F6]"

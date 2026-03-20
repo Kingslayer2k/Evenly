@@ -15,10 +15,10 @@ import {
   formatCurrency,
   formatExpenseDate,
   formatSignedCurrency,
-  getDefaultColor,
   getDisplayNameFromUser,
   getExpenseTitle,
   getMemberPreview,
+  getStableCardColor,
   getUserSettlementSummary,
   sumGroupTotal,
 } from "../lib/utils";
@@ -73,7 +73,7 @@ export default function GroupDetailPage({ groupId }) {
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [contexts, setContexts] = useState([]);
-  const [cardColor, setCardColor] = useState(getDefaultColor(0));
+  const [cardColor, setCardColor] = useState(getStableCardColor(groupId));
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -116,7 +116,7 @@ export default function GroupDetailPage({ groupId }) {
           readStoredCardColor(bundle.group?.id) ||
             bundle.group?.card_color ||
             bundle.group?.color ||
-            getDefaultColor(0),
+            getStableCardColor(bundle.group?.id || bundle.group?.name),
         );
       } catch (error) {
         console.error(error);
