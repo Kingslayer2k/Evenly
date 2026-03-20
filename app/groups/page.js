@@ -280,6 +280,8 @@ export default function GroupsPage() {
     [displayGroups.length],
   );
 
+  const stackGap = 30;
+
   const handleRefresh = useCallback(async () => {
     if (!user) return;
     await loadGroupsData(user, { refresh: true });
@@ -491,7 +493,7 @@ export default function GroupsPage() {
                     key={group.id}
                     className="absolute inset-x-0"
                     style={{
-                      top: `${index * 32}px`,
+                      top: `${(displayGroups.length - 1 - index) * stackGap}px`,
                       zIndex: displayGroups.length - index,
                     }}
                   >
@@ -499,6 +501,8 @@ export default function GroupsPage() {
                       group={group}
                       onClick={handleOpenGroup}
                       onColorChange={handleCardColorChange}
+                      collapsed={index > 0}
+                      isTopCard={index === 0}
                     />
                   </div>
                 ))}
