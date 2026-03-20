@@ -93,7 +93,14 @@ export default function GroupCard({
         aria-label={`Open ${group.name}`}
       />
 
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[rgba(28,25,23,0.16)]" />
+      {group.cardImage ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${group.cardImage})` }}
+        />
+      ) : null}
+
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[rgba(28,25,23,0.18)]" />
 
       {group.needsAttention ? (
         <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-[#0070F3] shadow-[0_0_0_4px_rgba(255,255,255,0.18)]" />
@@ -163,7 +170,7 @@ export default function GroupCard({
                         type="button"
                         onPointerDown={stopCardOpen}
                         onClick={handleColorButtonClick}
-                        className="pointer-events-auto inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#0060D6] hover:bg-[#0060D6] hover:text-white active:scale-[0.96]"
+                        className="pointer-events-auto inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
                         aria-label={`Change ${group.name} card color`}
                       >
                         <FourSquaresIcon />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { prepareCardBackgroundImage } from "../lib/cardAppearance";
 import { copyToClipboard, getDefaultColor, PRESET_COLORS } from "../lib/utils";
 
 function FourSquaresIcon() {
@@ -14,22 +15,38 @@ function FourSquaresIcon() {
   );
 }
 
+function ImagePlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5Z" />
+      <path d="m7.5 16 3.4-3.4a1 1 0 0 1 1.4 0L16.5 17" />
+      <path d="m13.5 14 1.1-1.1a1 1 0 0 1 1.4 0l2 2" />
+      <circle cx="9" cy="9" r="1.2" />
+      <path d="M19 3v4" />
+      <path d="M17 5h4" />
+    </svg>
+  );
+}
+
 export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [groupName, setGroupName] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [selectedColor, setSelectedColor] = useState(getDefaultColor(0));
+  const [selectedImage, setSelectedImage] = useState("");
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const colorInputRef = useRef(null);
+  const imageInputRef = useRef(null);
 
   function resetState() {
     setCurrentStep(1);
     setGroupName("");
     setGeneratedCode("");
     setSelectedColor(getDefaultColor(0));
+    setSelectedImage("");
     setCopied(false);
     setSharing(false);
     setIsSubmitting(false);
@@ -78,6 +95,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
     const result = await onCreate?.({
       name: trimmedName,
       color: selectedColor,
+      imageData: selectedImage,
     });
 
     if (!result?.ok) {
@@ -117,6 +135,21 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
       }
     } finally {
       setSharing(false);
+    }
+  }
+
+  async function handleImageInputChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imageData = await prepareCardBackgroundImage(file);
+      setSelectedImage(imageData);
+    } catch (nextError) {
+      console.error(nextError);
+      setError(nextError.message || "Could not load that image.");
+    } finally {
+      event.target.value = "";
     }
   }
 
@@ -188,7 +221,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                         onClick={() => setSelectedColor(color)}
                         className={`h-10 w-10 rounded-full border-2 transition active:scale-95 ${
                           isSelected
-                            ? "border-[#0070F3] shadow-[0_0_0_4px_rgba(0,112,243,0.14)]"
+                            ? "border-[#5F7D6A] shadow-[0_0_0_4px_rgba(95,125,106,0.16)]"
                             : "border-white shadow-[0_4px_10px_rgba(28,25,23,0.08)]"
                         }`}
                         style={{ backgroundColor: color }}
@@ -200,10 +233,20 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                   <button
                     type="button"
                     onClick={() => colorInputRef.current?.click()}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-[#F3F4F6] text-[#1C1917] transition hover:border-[#0060D6] hover:bg-[#0060D6] hover:text-white active:scale-95"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-[#F3F4F6] text-[#1C1917] transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-95"
                     aria-label="Open custom color picker"
                   >
                     <FourSquaresIcon />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D1D5DB] bg-[#F3F4F6] px-4 text-[13px] font-semibold text-[#1C1917] transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-95"
+                    aria-label="Add an image background"
+                  >
+                    <ImagePlusIcon />
+                    Add image
                   </button>
 
                   <input
@@ -214,13 +257,29 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                     className="sr-only"
                     tabIndex={-1}
                   />
+
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => void handleImageInputChange(event)}
+                    className="sr-only"
+                    tabIndex={-1}
+                  />
                 </div>
 
                 <div
-                  className="mx-auto mt-4 max-w-[360px] overflow-hidden rounded-[24px] border border-white/70 shadow-[0_8px_20px_rgba(28,25,23,0.08)]"
+                  className="relative mx-auto mt-4 max-w-[360px] overflow-hidden rounded-[24px] border border-white/70 shadow-[0_8px_20px_rgba(28,25,23,0.08)]"
                   style={{ backgroundColor: selectedColor }}
                 >
-                  <div className="aspect-[3.375/2.125] bg-[rgba(28,25,23,0.16)] px-5 py-5 text-white">
+                  {selectedImage ? (
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${selectedImage})` }}
+                    />
+                  ) : null}
+
+                  <div className="relative aspect-[3.375/2.125] bg-[rgba(28,25,23,0.18)] px-5 py-5 text-white">
                     <div className="flex h-full flex-col">
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -262,7 +321,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                   type="button"
                   onClick={() => void handleCreate()}
                   disabled={!groupName.trim() || isSubmitting}
-                  className="rounded-xl bg-[#8BA888] px-8 py-3 text-[16px] font-medium text-white transition duration-200 ease-out hover:bg-[#5F7D6A] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+                  className="rounded-xl bg-[#5F7D6A] px-8 py-3 text-[16px] font-medium text-white transition duration-200 ease-out hover:bg-[#3A4E43] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
                 >
                   {isSubmitting ? "Creating..." : "Create"}
                 </button>

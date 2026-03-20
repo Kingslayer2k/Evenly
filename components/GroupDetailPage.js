@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddExpenseModal from "./AddExpenseModal";
 import PayerSwitchModal from "./PayerSwitchModal";
+import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
 import {
   createExpenseRecord,
@@ -23,12 +24,10 @@ import {
   sumGroupTotal,
 } from "../lib/utils";
 
-const CARD_COLORS_STORAGE_KEY = "evenly-card-colors";
-
 function readStoredCardColor(groupId) {
   if (typeof window === "undefined") return null;
   try {
-    const colors = JSON.parse(window.localStorage.getItem(CARD_COLORS_STORAGE_KEY) || "{}");
+    const colors = JSON.parse(window.localStorage.getItem("evenly-card-colors") || "{}");
     return colors[groupId] || null;
   } catch (error) {
     console.error("Could not read stored card color:", error);
@@ -74,6 +73,7 @@ export default function GroupDetailPage({ groupId }) {
   const [expenses, setExpenses] = useState([]);
   const [contexts, setContexts] = useState([]);
   const [cardColor, setCardColor] = useState(getStableCardColor(groupId));
+  const [cardImage, setCardImage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -117,6 +117,13 @@ export default function GroupDetailPage({ groupId }) {
             bundle.group?.card_color ||
             bundle.group?.color ||
             getStableCardColor(bundle.group?.id || bundle.group?.name),
+        );
+        setCardImage(
+          readStoredCardImage(bundle.group?.id) ||
+            bundle.group?.card_image ||
+            bundle.group?.background_image ||
+            bundle.group?.image_url ||
+            "",
         );
       } catch (error) {
         console.error(error);
@@ -212,7 +219,7 @@ export default function GroupDetailPage({ groupId }) {
   const displayName = profileName || getDisplayNameFromUser(user, "");
 
   const handleCreateExpense = useCallback(
-    async ({ title, amountCents, paidBy, participants, splitType, shares, contextId }) => {
+    async ({ title, amountCents, paidBy, participants, splitType, shares, contextId, contextName }) => {
       if (!supabase || !user) {
         return { ok: false, message: "Sign in first so we can save the expense." };
       }
@@ -227,6 +234,7 @@ export default function GroupDetailPage({ groupId }) {
           splitType,
           shares,
           contextId,
+          contextName,
         });
 
         await loadDetail(user, { refresh: true });
@@ -316,7 +324,7 @@ export default function GroupDetailPage({ groupId }) {
           <button
             type="button"
             onClick={() => setIsExpenseModalOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0070F3] text-white transition hover:bg-[#0060D6] active:scale-[0.98]"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5F7D6A] text-white transition hover:bg-[#3A4E43] active:scale-[0.98]"
             aria-label="Add expense"
           >
             <PlusIcon />
@@ -356,7 +364,7 @@ export default function GroupDetailPage({ groupId }) {
             <button
               type="button"
               onClick={() => router.push("/groups")}
-              className="mt-6 rounded-full bg-[#0070F3] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0060D6]"
+              className="mt-6 rounded-full bg-[#5F7D6A] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[#3A4E43]"
             >
               Back to groups
             </button>
@@ -364,10 +372,17 @@ export default function GroupDetailPage({ groupId }) {
         ) : (
           <>
             <section
-              className="overflow-hidden rounded-[30px] border border-white/60 shadow-[0_10px_30px_rgba(28,25,23,0.08)]"
+              className="relative overflow-hidden rounded-[30px] border border-white/60 shadow-[0_10px_30px_rgba(28,25,23,0.08)]"
               style={{ backgroundColor: cardColor }}
             >
-              <div className="bg-[rgba(28,25,23,0.16)] px-6 pt-6 pb-6 text-white">
+              {cardImage ? (
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${cardImage})` }}
+                />
+              ) : null}
+
+              <div className="relative bg-[rgba(28,25,23,0.18)] px-6 pt-6 pb-6 text-white">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h1
@@ -510,7 +525,7 @@ export default function GroupDetailPage({ groupId }) {
                 <button
                   type="button"
                   onClick={() => setIsExpenseModalOpen(true)}
-                  className="rounded-full bg-[#0070F3] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0060D6]"
+                  className="rounded-full bg-[#5F7D6A] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#3A4E43]"
                 >
                   Add
                 </button>
@@ -542,7 +557,7 @@ export default function GroupDetailPage({ groupId }) {
                           <button
                             type="button"
                             onClick={() => setExpenseToReassign(expense)}
-                            className="mt-2 text-[13px] font-semibold text-[#0070F3] transition hover:text-[#0060D6]"
+                            className="mt-2 text-[13px] font-semibold text-[#5F7D6A] transition hover:text-[#3A4E43]"
                           >
                             Switch payer
                           </button>

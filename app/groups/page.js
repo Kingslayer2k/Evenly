@@ -6,6 +6,13 @@ import CreateGroupModal from "../../components/CreateGroupModal";
 import GroupCard from "../../components/GroupCard";
 import JoinGroupModal from "../../components/JoinGroupModal";
 import SettingsMenu from "../../components/SettingsMenu";
+import {
+  prepareCardBackgroundImage,
+  readStoredCardColors,
+  readStoredCardImages,
+  writeStoredCardColors,
+  writeStoredCardImages,
+} from "../../lib/cardAppearance";
 import { supabase } from "../../lib/supabase";
 import {
   createGroupWithMembership,
@@ -13,6 +20,7 @@ import {
   loadUserGroupsBundle,
   normalizeInviteCode,
   updateGroupCardColor,
+  updateGroupCardImage,
 } from "../../lib/groupData";
 import {
   computeBalancesForGroup,
@@ -25,8 +33,6 @@ import {
   needsAttention,
   sumGroupTotal,
 } from "../../lib/utils";
-
-const CARD_COLORS_STORAGE_KEY = "evenly-card-colors";
 
 function IconButton({ children, onClick, label, spinning = false }) {
   return (
@@ -66,12 +72,58 @@ function PlusIcon() {
   );
 }
 
-function GroupPreviewOverlay({ group, openedAt, onClose }) {
+function FourSquaresIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+      <rect x="4" y="4" width="6" height="6" rx="1.4" />
+      <rect x="14" y="4" width="6" height="6" rx="1.4" />
+      <rect x="4" y="14" width="6" height="6" rx="1.4" />
+      <rect x="14" y="14" width="6" height="6" rx="1.4" />
+    </svg>
+  );
+}
+
+function ImagePlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5Z" />
+      <path d="m7.5 16 3.4-3.4a1 1 0 0 1 1.4 0L16.5 17" />
+      <path d="m13.5 14 1.1-1.1a1 1 0 0 1 1.4 0l2 2" />
+      <circle cx="9" cy="9" r="1.2" />
+      <path d="M19 3v4" />
+      <path d="M17 5h4" />
+    </svg>
+  );
+}
+
+function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageChange }) {
+  const colorInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+
   if (!group) return null;
 
   function handleClose() {
     if (Date.now() - openedAt < 220) return;
     onClose?.();
+  }
+
+  function stopClose(event) {
+    event.stopPropagation();
+  }
+
+  async function handleImageInputChange(event) {
+    stopClose(event);
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imageData = await prepareCardBackgroundImage(file);
+      await onImageChange?.(group, imageData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      event.target.value = "";
+    }
   }
 
   return (
@@ -80,10 +132,18 @@ function GroupPreviewOverlay({ group, openedAt, onClose }) {
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-[380px] overflow-hidden rounded-[32px] border border-white/60 shadow-[0_24px_80px_rgba(28,25,23,0.22)]"
+        className="relative w-full max-w-[380px] overflow-hidden rounded-[32px] border border-white/60 shadow-[0_24px_80px_rgba(28,25,23,0.22)]"
         style={{ backgroundColor: group.cardColor }}
+        onClick={stopClose}
       >
-        <div className="bg-[rgba(28,25,23,0.16)] px-6 pt-6 pb-7 text-white">
+        {group.cardImage ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${group.cardImage})` }}
+          />
+        ) : null}
+
+        <div className="relative bg-[rgba(28,25,23,0.18)] px-6 pt-6 pb-7 text-white">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2
@@ -105,6 +165,50 @@ function GroupPreviewOverlay({ group, openedAt, onClose }) {
                 {formatCurrencyCompact(group.totalSpent)}
               </div>
             </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={(event) => {
+                stopClose(event);
+                colorInputRef.current?.click();
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 py-2 text-[13px] font-semibold text-white transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A]"
+            >
+              <FourSquaresIcon />
+              Color
+            </button>
+
+            <button
+              type="button"
+              onClick={(event) => {
+                stopClose(event);
+                imageInputRef.current?.click();
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 py-2 text-[13px] font-semibold text-white transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A]"
+            >
+              <ImagePlusIcon />
+              Add image
+            </button>
+
+            <input
+              ref={colorInputRef}
+              type="color"
+              value={group.cardColor}
+              onChange={(event) => onColorChange?.(group, event.target.value)}
+              className="sr-only"
+              tabIndex={-1}
+            />
+
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(event) => void handleImageInputChange(event)}
+              className="sr-only"
+              tabIndex={-1}
+            />
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-3">
@@ -138,17 +242,6 @@ function GroupPreviewOverlay({ group, openedAt, onClose }) {
   );
 }
 
-function readStoredCardColors() {
-  if (typeof window === "undefined") return {};
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(CARD_COLORS_STORAGE_KEY) || "{}");
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    console.error("Could not read stored card colors:", error);
-    return {};
-  }
-}
-
 export default function GroupsPage() {
   const router = useRouter();
   const toastTimeoutRef = useRef(null);
@@ -159,6 +252,7 @@ export default function GroupsPage() {
   const [membersByGroup, setMembersByGroup] = useState({});
   const [expensesByGroup, setExpensesByGroup] = useState({});
   const [cardColors, setCardColors] = useState({});
+  const [cardImages, setCardImages] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -187,9 +281,18 @@ export default function GroupsPage() {
         ...previous,
         [groupId]: color,
       };
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(CARD_COLORS_STORAGE_KEY, JSON.stringify(next));
-      }
+      writeStoredCardColors(next);
+      return next;
+    });
+  }, []);
+
+  const persistCardImage = useCallback((groupId, imageData) => {
+    setCardImages((previous) => {
+      const next = {
+        ...previous,
+        [groupId]: imageData,
+      };
+      writeStoredCardImages(next);
       return next;
     });
   }, []);
@@ -235,6 +338,7 @@ export default function GroupsPage() {
 
   useEffect(() => {
     setCardColors(readStoredCardColors());
+    setCardImages(readStoredCardImages());
   }, []);
 
   useEffect(() => {
@@ -351,17 +455,23 @@ export default function GroupsPage() {
           group.card_color ||
           group.color ||
           getStableCardColor(group.id || group.name, index),
+        cardImage:
+          cardImages[group.id] ||
+          group.card_image ||
+          group.background_image ||
+          group.image_url ||
+          "",
         needsAttention: needsAttention(currentBalance),
       };
     });
-  }, [cardColors, expensesByGroup, groups, membersByGroup, memberships]);
+  }, [cardColors, cardImages, expensesByGroup, groups, membersByGroup, memberships]);
 
   const stackHeight = useMemo(
-    () => (displayGroups.length ? 252 + Math.max(0, displayGroups.length - 1) * 58 : 0),
+    () => (displayGroups.length ? 252 + Math.max(0, displayGroups.length - 1) * 64 : 0),
     [displayGroups.length],
   );
 
-  const stackGap = 58;
+  const stackGap = 64;
 
   const handleRefresh = useCallback(async () => {
     if (!user) return;
@@ -377,7 +487,7 @@ export default function GroupsPage() {
   );
 
   const handleCreateGroup = useCallback(
-    async ({ name, color }) => {
+    async ({ name, color, imageData }) => {
       if (!supabase || !user) {
         return { ok: false, message: "Sign in first so we can create the group." };
       }
@@ -385,7 +495,13 @@ export default function GroupsPage() {
       try {
         const { group, code } = await createGroupWithMembership(supabase, user, profileName, name);
         persistCardColor(group.id, color);
+        if (imageData) {
+          persistCardImage(group.id, imageData);
+        }
         await updateGroupCardColor(supabase, group.id, color);
+        if (imageData) {
+          await updateGroupCardImage(supabase, group.id, imageData);
+        }
         await loadGroupsData(user, { refresh: true });
         showToast(`${name} is ready`);
 
@@ -401,7 +517,7 @@ export default function GroupsPage() {
         };
       }
     },
-    [loadGroupsData, persistCardColor, profileName, showToast, user],
+    [loadGroupsData, persistCardColor, persistCardImage, profileName, showToast, user],
   );
 
   const handleJoinGroup = useCallback(
@@ -455,9 +571,40 @@ export default function GroupsPage() {
     async (group, nextColor) => {
       persistCardColor(group.id, nextColor);
       await updateGroupCardColor(supabase, group.id, nextColor);
+      setPreviewState((previous) =>
+        previous.group?.id === group.id
+          ? {
+              ...previous,
+              group: {
+                ...previous.group,
+                cardColor: nextColor,
+              },
+            }
+          : previous,
+      );
       showToast(`${group.name} card updated`);
     },
     [persistCardColor, showToast],
+  );
+
+  const handleCardImageChange = useCallback(
+    async (group, imageData) => {
+      persistCardImage(group.id, imageData);
+      await updateGroupCardImage(supabase, group.id, imageData);
+      setPreviewState((previous) =>
+        previous.group?.id === group.id
+          ? {
+              ...previous,
+              group: {
+                ...previous.group,
+                cardImage: imageData,
+              },
+            }
+          : previous,
+      );
+      showToast(`${group.name} background updated`);
+    },
+    [persistCardImage, showToast],
   );
 
   const handlePreviewGroup = useCallback((group) => {
@@ -656,6 +803,8 @@ export default function GroupsPage() {
         group={previewState.group}
         openedAt={previewState.openedAt}
         onClose={handleClosePreview}
+        onColorChange={handleCardColorChange}
+        onImageChange={handleCardImageChange}
       />
     </main>
   );

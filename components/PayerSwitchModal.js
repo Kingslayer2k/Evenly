@@ -54,13 +54,13 @@ export default function PayerSwitchModal({ isOpen, onClose, onSave, expense, mem
                 type="button"
                 onClick={() => setPaidBy(member.id)}
                 className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition ${
-                  active ? "border-[#0070F3] bg-[#F4F8FF]" : "border-[#E5E7EB] bg-white hover:bg-[#FAFAF8]"
+                  active ? "border-[#5F7D6A] bg-[#EEF3EE]" : "border-[#E5E7EB] bg-white hover:bg-[#FAFAF8]"
                 }`}
               >
                 <span className="text-[15px] font-medium text-[#1C1917]">{member.display_name}</span>
                 <span
                   className={`h-5 w-5 rounded-full border ${
-                    active ? "border-[#0070F3] bg-[#0070F3]" : "border-[#D1D5DB]"
+                    active ? "border-[#5F7D6A] bg-[#5F7D6A]" : "border-[#D1D5DB]"
                   }`}
                 />
               </button>
@@ -82,7 +82,7 @@ export default function PayerSwitchModal({ isOpen, onClose, onSave, expense, mem
             type="button"
             onClick={() => void handleSave()}
             disabled={isSaving}
-            className="rounded-full bg-[#0070F3] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0060D6] disabled:cursor-not-allowed disabled:bg-[#A3C5F7]"
+            className="rounded-full bg-[#5F7D6A] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#3A4E43] disabled:cursor-not-allowed disabled:bg-[#A3B8A8]"
           >
             {isSaving ? "Saving..." : "Update payer"}
           </button>

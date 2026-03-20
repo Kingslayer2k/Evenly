@@ -29,6 +29,7 @@ export default function AddExpenseModal({
     }, {}),
   );
   const [contextId, setContextId] = useState(contexts?.[0]?.id || "");
+  const [contextName, setContextName] = useState(contexts?.[0]?.name || contexts?.[0]?.title || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -102,6 +103,7 @@ export default function AddExpenseModal({
       splitType: splitMode,
       shares,
       contextId: contextId || null,
+      contextName: contextName.trim() || null,
     });
 
     if (!result?.ok) {
@@ -112,6 +114,18 @@ export default function AddExpenseModal({
 
     setIsSubmitting(false);
     onClose?.();
+  }
+
+  function handleContextInputChange(event) {
+    const nextName = event.target.value;
+    setContextName(nextName);
+
+    const matchingContext = (contexts || []).find((context) => {
+      const label = String(context.name || context.title || "").trim().toLowerCase();
+      return label === nextName.trim().toLowerCase();
+    });
+
+    setContextId(matchingContext?.id || "");
   }
 
   return (
@@ -152,7 +166,7 @@ export default function AddExpenseModal({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Groceries, dinner, gas..."
-              className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#0070F3]"
+              className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#5F7D6A]"
             />
           </div>
 
@@ -160,7 +174,7 @@ export default function AddExpenseModal({
             <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
               Amount
             </label>
-            <div className="mt-2 flex h-12 items-center rounded-2xl border border-[#E5E7EB] bg-white px-4 focus-within:border-[#0070F3]">
+            <div className="mt-2 flex h-12 items-center rounded-2xl border border-[#E5E7EB] bg-white px-4 focus-within:border-[#5F7D6A]">
               <span className="text-[18px] font-semibold text-[#1C1917]">$</span>
               <input
                 type="number"
@@ -182,7 +196,7 @@ export default function AddExpenseModal({
               <select
                 value={paidBy}
                 onChange={(event) => setPaidBy(event.target.value)}
-                className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#0070F3]"
+                className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#5F7D6A]"
               >
                 {(members || []).map((member) => (
                   <option key={member.id} value={member.id}>
@@ -196,18 +210,38 @@ export default function AddExpenseModal({
               <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
                 Context
               </label>
-              <select
-                value={contextId}
-                onChange={(event) => setContextId(event.target.value)}
-                className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#0070F3]"
-              >
-                <option value="">No context</option>
-                {(contexts || []).map((context) => (
-                  <option key={context.id} value={context.id}>
-                    {context.name || context.title || "Shared"}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={contextName}
+                onChange={handleContextInputChange}
+                placeholder="Shared, spring break, groceries..."
+                className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#5F7D6A]"
+              />
+              {(contexts || []).length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(contexts || []).map((context) => {
+                    const label = context.name || context.title || "Shared";
+                    const active = contextId === context.id || contextName.trim() === label;
+                    return (
+                      <button
+                        key={context.id}
+                        type="button"
+                        onClick={() => {
+                          setContextId(context.id);
+                          setContextName(label);
+                        }}
+                        className={`rounded-full px-3 py-2 text-[13px] font-medium transition ${
+                          active
+                            ? "bg-[#C0CFB2] text-[#3A4E43]"
+                            : "bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -252,7 +286,7 @@ export default function AddExpenseModal({
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleParticipant(member.id)}
-                          className="h-4 w-4 rounded border-[#D1D5DB] text-[#0070F3] focus:ring-[#0070F3]"
+                          className="h-4 w-4 rounded border-[#D1D5DB] text-[#5F7D6A] focus:ring-[#5F7D6A]"
                         />
                         <span>{member.display_name}</span>
                       </label>
@@ -308,7 +342,7 @@ export default function AddExpenseModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-full bg-[#0070F3] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0060D6] disabled:cursor-not-allowed disabled:bg-[#A3C5F7]"
+              className="rounded-full bg-[#5F7D6A] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#3A4E43] disabled:cursor-not-allowed disabled:bg-[#A3B8A8]"
             >
               {isSubmitting ? "Saving..." : "Save expense"}
             </button>
