@@ -395,7 +395,7 @@ export default function GroupsPage() {
       </header>
 
       <div className="mx-auto w-full max-w-[420px] px-5 pt-[108px] pb-12">
-        {user ? (
+        {user && displayGroups.length > 0 ? (
           <div className="mb-5 flex items-center gap-3">
             <button
               type="button"
