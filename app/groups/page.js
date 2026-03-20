@@ -8,8 +8,13 @@ import JoinGroupModal from "../../components/JoinGroupModal";
 import SettingsMenu from "../../components/SettingsMenu";
 import { supabase } from "../../lib/supabase";
 import {
+  createGroupWithMembership,
+  joinGroupByCode,
+  loadUserGroupsBundle,
+  normalizeInviteCode,
+} from "../../lib/groupData";
+import {
   computeBalancesForGroup,
-  generateGroupCode,
   getDefaultColor,
   getDisplayNameFromUser,
   getMemberPreview,
@@ -115,11 +120,11 @@ export default function GroupsPage() {
   const loadGroupsData = useCallback(
     async (currentUser, options = {}) => {
       if (!supabase || !currentUser) {
+        setProfileName("");
         setGroups([]);
         setMemberships([]);
         setMembersByGroup({});
         setExpensesByGroup({});
-        setProfileName("");
         setIsLoading(false);
         setIsRefreshing(false);
         return;
@@ -134,94 +139,15 @@ export default function GroupsPage() {
       setErrorMessage("");
 
       try {
-        let resolvedDisplayName = getDisplayNameFromUser(currentUser, "");
-
-        const profileResponse = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-
-        if (profileResponse.data?.display_name) {
-          resolvedDisplayName = profileResponse.data.display_name;
-        }
-
-        setProfileName(resolvedDisplayName);
-
-        try {
-          await supabase.from("profiles").upsert(
-            {
-              user_id: currentUser.id,
-              display_name: resolvedDisplayName,
-            },
-            { onConflict: "user_id" },
-          );
-        } catch (profileWriteError) {
-          console.error("Profile upsert skipped:", profileWriteError);
-        }
-
-        const membershipsResponse = await supabase
-          .from("group_members")
-          .select("*")
-          .eq("user_id", currentUser.id);
-
-        if (membershipsResponse.error) throw membershipsResponse.error;
-
-        const nextMemberships = membershipsResponse.data || [];
-        const groupIds = [...new Set(nextMemberships.map((membership) => membership.group_id).filter(Boolean))];
-        setMemberships(nextMemberships);
-
-        if (!groupIds.length) {
-          setGroups([]);
-          setMembersByGroup({});
-          setExpensesByGroup({});
-          return;
-        }
-
-        const [groupsResponse, membersResponse, expensesResponse] = await Promise.all([
-          supabase.from("groups").select("*").in("id", groupIds),
-          supabase.from("group_members").select("*").in("group_id", groupIds),
-          supabase.from("expenses").select("*").in("group_id", groupIds),
-        ]);
-
-        if (groupsResponse.error) throw groupsResponse.error;
-        if (membersResponse.error) throw membersResponse.error;
-
-        const membershipOrder = nextMemberships.reduce((accumulator, membership) => {
-          accumulator[membership.group_id] = membership.created_at || "";
-          return accumulator;
-        }, {});
-
-        const nextGroups = [...(groupsResponse.data || [])].sort((left, right) => {
-          const leftDate = new Date(membershipOrder[left.id] || left.created_at || 0).getTime();
-          const rightDate = new Date(membershipOrder[right.id] || right.created_at || 0).getTime();
-          return rightDate - leftDate;
-        });
-
-        const nextMembersByGroup = {};
-        for (const member of membersResponse.data || []) {
-          const key = member.group_id;
-          nextMembersByGroup[key] = nextMembersByGroup[key] || [];
-          nextMembersByGroup[key].push(member);
-        }
-
-        const nextExpensesByGroup = {};
-        if (expensesResponse.error) {
-          console.error("Expenses could not be loaded yet:", expensesResponse.error);
-        } else {
-          for (const expense of expensesResponse.data || []) {
-            const key = expense.group_id;
-            nextExpensesByGroup[key] = nextExpensesByGroup[key] || [];
-            nextExpensesByGroup[key].push(expense);
-          }
-        }
-
-        setGroups(nextGroups);
-        setMembersByGroup(nextMembersByGroup);
-        setExpensesByGroup(nextExpensesByGroup);
-      } catch (loadError) {
-        console.error(loadError);
-        setErrorMessage(loadError.message || "Could not load your groups yet.");
+        const bundle = await loadUserGroupsBundle(supabase, currentUser);
+        setProfileName(bundle.profileName);
+        setGroups(bundle.groups);
+        setMemberships(bundle.memberships);
+        setMembersByGroup(bundle.membersByGroup);
+        setExpensesByGroup(bundle.expensesByGroup);
+      } catch (error) {
+        console.error(error);
+        setErrorMessage(error.message || "Could not load your groups yet.");
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -237,11 +163,7 @@ export default function GroupsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const nextInviteCode = (params.get("join") || params.get("code") || "")
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .slice(0, 6);
-
+    const nextInviteCode = normalizeInviteCode(params.get("join") || params.get("code") || "");
     if (nextInviteCode) {
       setInviteCodeFromUrl(nextInviteCode);
       setPendingInviteCode(nextInviteCode);
@@ -300,10 +222,8 @@ export default function GroupsPage() {
   useEffect(() => {
     if (!supabase || !user) return undefined;
 
-    // Re-fetch whenever groups, memberships, or expenses change so other members
-    // see updates as soon as Supabase broadcasts them.
     const channel = supabase
-      .channel(`evenly-live-${user.id}`)
+      .channel(`evenly-groups-${user.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "groups" },
@@ -366,28 +286,12 @@ export default function GroupsPage() {
     showToast("Groups refreshed");
   }, [loadGroupsData, showToast, user]);
 
-  const handleOpenGroup = useCallback((group) => {
-    console.log("Open group detail:", group);
-    showToast(`Opening ${group.name}`);
-  }, [showToast]);
-
-  const generateUniqueJoinCode = useCallback(async () => {
-    if (!supabase) throw new Error("Supabase is not configured.");
-
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-      const nextCode = generateGroupCode();
-      const existing = await supabase
-        .from("groups")
-        .select("id")
-        .eq("join_code", nextCode)
-        .maybeSingle();
-
-      if (existing.error) throw existing.error;
-      if (!existing.data) return nextCode;
-    }
-
-    throw new Error("Could not generate a unique code. Try again.");
-  }, []);
+  const handleOpenGroup = useCallback(
+    (group) => {
+      router.push(`/groups/${group.id}`);
+    },
+    [router],
+  );
 
   const handleCreateGroup = useCallback(
     async ({ name, color }) => {
@@ -396,43 +300,8 @@ export default function GroupsPage() {
       }
 
       try {
-        const code = await generateUniqueJoinCode();
-        let createdGroup = null;
-        let groupInsertError = null;
-
-        const candidatePayloads = [
-          { name, join_code: code, created_by: user.id },
-          { name, join_code: code },
-        ];
-
-        for (const payload of candidatePayloads) {
-          const response = await supabase.from("groups").insert(payload).select("*").single();
-          if (!response.error) {
-            createdGroup = response.data;
-            groupInsertError = null;
-            break;
-          }
-          groupInsertError = response.error;
-          if (!("created_by" in payload) || !/created_by|column/i.test(response.error.message || "")) {
-            break;
-          }
-        }
-
-        if (groupInsertError || !createdGroup) {
-          throw groupInsertError || new Error("Could not create the group.");
-        }
-
-        const displayName = getDisplayNameFromUser(user, profileName);
-        const membershipResponse = await supabase.from("group_members").insert({
-          group_id: createdGroup.id,
-          user_id: user.id,
-          display_name: displayName,
-          role: "admin",
-        });
-
-        if (membershipResponse.error) throw membershipResponse.error;
-
-        persistCardColor(createdGroup.id, color);
+        const { group, code } = await createGroupWithMembership(supabase, user, profileName, name);
+        persistCardColor(group.id, color);
         await loadGroupsData(user, { refresh: true });
         showToast(`${name} is ready`);
 
@@ -440,15 +309,15 @@ export default function GroupsPage() {
           ok: true,
           code,
         };
-      } catch (createError) {
-        console.error(createError);
+      } catch (error) {
+        console.error(error);
         return {
           ok: false,
-          message: createError.message || "Could not create the group right now.",
+          message: error.message || "Could not create the group right now.",
         };
       }
     },
-    [generateUniqueJoinCode, loadGroupsData, persistCardColor, profileName, showToast, user],
+    [loadGroupsData, persistCardColor, profileName, showToast, user],
   );
 
   const handleJoinGroup = useCallback(
@@ -457,64 +326,21 @@ export default function GroupsPage() {
         return { ok: false, message: "Sign in first so we can join the group." };
       }
 
-      const normalizedCode = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
-
       try {
-        const groupResponse = await supabase
-          .from("groups")
-          .select("*")
-          .eq("join_code", normalizedCode)
-          .maybeSingle();
-
-        if (groupResponse.error) throw groupResponse.error;
-        if (!groupResponse.data) {
-          return { ok: false, message: "Invalid code. Try again." };
-        }
-
-        const existingMembership = await supabase
-          .from("group_members")
-          .select("id")
-          .eq("group_id", groupResponse.data.id)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (existingMembership.error && existingMembership.error.code !== "PGRST116") {
-          throw existingMembership.error;
-        }
-
-        if (existingMembership.data?.id) {
-          return { ok: false, message: "You already joined this group." };
-        }
-
-        const displayName = getDisplayNameFromUser(user, profileName);
-        const joinResponse = await supabase.from("group_members").insert({
-          group_id: groupResponse.data.id,
-          user_id: user.id,
-          display_name: displayName,
-          role: "member",
-        });
-
-        if (joinResponse.error) {
-          if (/duplicate key/i.test(joinResponse.error.message || "")) {
-            return { ok: false, message: "You already joined this group." };
-          }
-          throw joinResponse.error;
-        }
-
+        const joinedGroup = await joinGroupByCode(supabase, user, profileName, rawCode);
         await loadGroupsData(user, { refresh: true });
         setPendingInviteCode("");
         setPrefillJoinCode("");
         if (inviteCodeFromUrl) {
           router.replace("/groups");
         }
-        showToast(`Joined ${groupResponse.data.name}`);
-
+        showToast(`Joined ${joinedGroup.name}`);
         return { ok: true };
-      } catch (joinError) {
-        console.error(joinError);
+      } catch (error) {
+        console.error(error);
         return {
           ok: false,
-          message: joinError.message || "Could not join the group right now.",
+          message: error.message || "Could not join the group right now.",
         };
       }
     },
@@ -574,8 +400,8 @@ export default function GroupsPage() {
             <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
               <h2 className="text-[24px] font-bold text-[#1C1917]">Connect Supabase first</h2>
               <p className="mt-3 text-[15px] leading-6 text-[#6B7280]">
-                Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in
-                `.env.local` or Vercel, then reload this page.
+                Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`
+                or Vercel, then reload this page.
               </p>
             </div>
           </section>
