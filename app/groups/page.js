@@ -16,8 +16,11 @@ import {
 } from "../../lib/groupData";
 import {
   computeBalancesForGroup,
+  formatBalance,
+  formatCurrencyCompact,
   getDisplayNameFromUser,
   getMemberPreview,
+  getStandingCopy,
   getStableCardColor,
   needsAttention,
   sumGroupTotal,
@@ -63,6 +66,78 @@ function PlusIcon() {
   );
 }
 
+function GroupPreviewOverlay({ group, openedAt, onClose }) {
+  if (!group) return null;
+
+  function handleClose() {
+    if (Date.now() - openedAt < 220) return;
+    onClose?.();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(28,25,23,0.2)] px-6 backdrop-blur-md"
+      onClick={handleClose}
+    >
+      <div
+        className="w-full max-w-[380px] overflow-hidden rounded-[32px] border border-white/60 shadow-[0_24px_80px_rgba(28,25,23,0.22)]"
+        style={{ backgroundColor: group.cardColor }}
+      >
+        <div className="bg-[rgba(28,25,23,0.16)] px-6 pt-6 pb-7 text-white">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h2
+                className="max-w-[220px] text-[34px] font-semibold leading-[0.94] tracking-[-0.05em]"
+                style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+              >
+                {group.name}
+              </h2>
+              <p className="mt-3 max-w-[240px] text-[14px] text-white/85">
+                {group.memberPreview || "Just you for now"}
+              </p>
+            </div>
+
+            <div className={`pt-1 text-right ${group.needsAttention ? "pr-5" : ""}`}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/68">
+                Total
+              </div>
+              <div className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-white">
+                {formatCurrencyCompact(group.totalSpent)}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-3">
+            <div className="rounded-[22px] bg-white/16 p-4">
+              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/72">
+                {getStandingCopy(group.balance)}
+              </div>
+              <div className="mt-2 text-[32px] font-bold leading-none tracking-[-0.05em] text-white">
+                {formatBalance(group.balance)}
+              </div>
+            </div>
+            <div className="rounded-[22px] bg-white/16 p-4">
+              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/72">
+                Group details
+              </div>
+              <div className="mt-2 text-[14px] leading-6 text-white/90">
+                {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"}
+                <br />
+                {group.membersCount} {group.membersCount === 1 ? "member" : "members"}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-4 text-[12px] font-medium leading-[1.2] text-white/82">
+            <div className="truncate">code {group.code}</div>
+            <div className="shrink-0">tap anywhere to close</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function readStoredCardColors() {
   if (typeof window === "undefined") return {};
   try {
@@ -94,6 +169,7 @@ export default function GroupsPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const [previewState, setPreviewState] = useState({ group: null, openedAt: 0 });
 
   const showToast = useCallback((message) => {
     if (toastTimeoutRef.current) {
@@ -281,11 +357,11 @@ export default function GroupsPage() {
   }, [cardColors, expensesByGroup, groups, membersByGroup, memberships]);
 
   const stackHeight = useMemo(
-    () => (displayGroups.length ? 246 + Math.max(0, displayGroups.length - 1) * 30 : 0),
+    () => (displayGroups.length ? 252 + Math.max(0, displayGroups.length - 1) * 58 : 0),
     [displayGroups.length],
   );
 
-  const stackGap = 30;
+  const stackGap = 58;
 
   const handleRefresh = useCallback(async () => {
     if (!user) return;
@@ -383,6 +459,17 @@ export default function GroupsPage() {
     },
     [persistCardColor, showToast],
   );
+
+  const handlePreviewGroup = useCallback((group) => {
+    setPreviewState({
+      group,
+      openedAt: Date.now(),
+    });
+  }, []);
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewState({ group: null, openedAt: 0 });
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#F7F7F5]">
@@ -512,6 +599,7 @@ export default function GroupsPage() {
                     <GroupCard
                       group={group}
                       onClick={handleOpenGroup}
+                      onPreview={handlePreviewGroup}
                       onColorChange={handleCardColorChange}
                       collapsed={index > 0}
                       isTopCard={index === 0}
@@ -526,7 +614,7 @@ export default function GroupsPage() {
                 Hi {profileName || getDisplayNameFromUser(user, "")}.
               </div>
               <div className="mt-2 text-[13px] text-[#9CA3AF]">
-                Tap a card to open it. Tap <span className="font-semibold text-[#6B7280]">Color</span> to change the card color.
+                Tap a card to open it. Press and hold to peek. Tap <span className="font-semibold text-[#6B7280]">Color</span> to change the top card.
               </div>
             </div>
           </section>
@@ -562,6 +650,12 @@ export default function GroupsPage() {
         onClose={handleCloseJoinModal}
         onJoin={handleJoinGroup}
         initialCode={prefillJoinCode}
+      />
+
+      <GroupPreviewOverlay
+        group={previewState.group}
+        openedAt={previewState.openedAt}
+        onClose={handleClosePreview}
       />
     </main>
   );

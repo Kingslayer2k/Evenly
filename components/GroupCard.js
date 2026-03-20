@@ -16,12 +16,31 @@ function FourSquaresIcon() {
   );
 }
 
-export default function GroupCard({ group, onClick, onColorChange, collapsed = false, isTopCard = false }) {
+const LONG_PRESS_MS = 320;
+
+export default function GroupCard({
+  group,
+  onClick,
+  onPreview,
+  onColorChange,
+  collapsed = false,
+  isTopCard = false,
+}) {
   const colorInputRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+  const didLongPressRef = useRef(false);
   const standingCopy = getStandingCopy(group.balance);
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
 
   function stopCardOpen(event) {
     event.stopPropagation();
+    clearLongPressTimer();
   }
 
   function handleColorButtonClick(event) {
@@ -34,6 +53,29 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
     onColorChange?.(group, event.target.value);
   }
 
+  function handlePointerDown() {
+    clearLongPressTimer();
+    didLongPressRef.current = false;
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      didLongPressRef.current = true;
+      onPreview?.(group);
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerEnd() {
+    clearLongPressTimer();
+  }
+
+  function handleOpen() {
+    if (didLongPressRef.current) {
+      didLongPressRef.current = false;
+      return;
+    }
+
+    onClick?.(group);
+  }
+
   return (
     <div
       className="group relative w-full overflow-hidden rounded-[28px] border border-white/50 text-left text-white shadow-[0_8px_20px_rgba(28,25,23,0.08),0_20px_40px_rgba(28,25,23,0.12)] transition duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.995]"
@@ -41,26 +83,36 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
     >
       <button
         type="button"
-        onClick={() => onClick?.(group)}
-        className="absolute inset-0 z-0 rounded-[28px]"
+        onClick={handleOpen}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerEnd}
+        onPointerLeave={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onContextMenu={(event) => event.preventDefault()}
+        className="absolute inset-0 z-10 rounded-[28px]"
         aria-label={`Open ${group.name}`}
       />
 
-      <div className="absolute inset-0 bg-[rgba(28,25,23,0.16)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[rgba(28,25,23,0.16)]" />
 
       {group.needsAttention ? (
         <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-[#0070F3] shadow-[0_0_0_4px_rgba(255,255,255,0.18)]" />
       ) : null}
 
-      <div className={`relative z-10 aspect-[3.375/2.24] w-full ${collapsed ? "px-5 pt-2.5 pb-6" : "px-6 pt-5 pb-8"} pointer-events-none`}>
+      <div className={`relative z-20 aspect-[3.375/2.28] w-full ${collapsed ? "px-5 pt-3 pb-6" : "px-6 pt-5 pb-9"} pointer-events-none`}>
         {collapsed ? (
-          <div className="flex h-[30px] items-start justify-between gap-3">
-            <h3
-              className="min-w-0 max-w-[190px] truncate text-[18px] font-semibold leading-none tracking-[-0.04em] text-white"
-              style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
-            >
-              {group.name}
-            </h3>
+          <div className="flex h-[56px] items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h3
+                className="min-w-0 truncate text-[18px] font-semibold leading-none tracking-[-0.04em] text-white"
+                style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+              >
+                {group.name}
+              </h3>
+              <div className="mt-1 truncate text-[11px] font-medium leading-none text-white/82">
+                {group.memberPreview || "Just you for now"}
+              </div>
+            </div>
 
             <div className={`shrink-0 pt-0.5 text-right ${group.needsAttention ? "pr-4" : ""}`}>
               <div className="text-[16px] font-semibold leading-none tracking-[-0.03em] text-white">
@@ -130,7 +182,7 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-4 text-[12px] font-medium leading-[1.15] text-white/82">
+              <div className="mt-4 flex items-center justify-between gap-4 text-[12px] font-medium leading-[1.2] text-white/82">
                 <div className="truncate">
                   {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"} • code {group.code}
                 </div>
