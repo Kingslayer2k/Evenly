@@ -687,7 +687,7 @@ export default function GroupsPage() {
             <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
               <h2 className="text-[24px] font-bold text-[#1C1917]">Sign in to see your groups</h2>
               <p className="mt-3 text-[15px] leading-6 text-[#6B7280]">
-                Use the magic link on the welcome screen, then come right back here.
+                Log in on the welcome screen, then come right back here.
               </p>
               <button
                 type="button"

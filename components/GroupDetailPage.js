@@ -345,7 +345,7 @@ export default function GroupDetailPage({ groupId }) {
           <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
             <h2 className="text-[24px] font-bold text-[#1C1917]">Sign in first</h2>
             <p className="mt-3 text-[15px] leading-6 text-[#6B7280]">
-              Use your magic link and then come back into the group.
+              Log in on the welcome screen and then come back into the group.
             </p>
             <button
               type="button"

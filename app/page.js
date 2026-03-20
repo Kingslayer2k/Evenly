@@ -1,32 +1,54 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { getStoredDisplayName, setStoredDisplayName } from "../lib/groupData";
 
-const MAGIC_LINK_COOLDOWN_MS = 60_000;
-const MAGIC_LINK_LAST_SENT_KEY = "evenly-last-magic-link-sent-at";
+const AUTH_MODES = {
+  SIGN_UP: "sign-up",
+  LOG_IN: "log-in",
+};
+
+function AuthModeToggle({ mode, onChange }) {
+  return (
+    <div className="mb-6 inline-flex rounded-full bg-[#F3F4F6] p-1">
+      <button
+        type="button"
+        onClick={() => onChange(AUTH_MODES.SIGN_UP)}
+        className={`rounded-full px-4 py-2 text-[14px] font-semibold transition ${
+          mode === AUTH_MODES.SIGN_UP
+            ? "bg-white text-[#1C1917] shadow-[0_2px_8px_rgba(28,25,23,0.08)]"
+            : "text-[#6B7280]"
+        }`}
+      >
+        Create account
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(AUTH_MODES.LOG_IN)}
+        className={`rounded-full px-4 py-2 text-[14px] font-semibold transition ${
+          mode === AUTH_MODES.LOG_IN
+            ? "bg-white text-[#1C1917] shadow-[0_2px_8px_rgba(28,25,23,0.08)]"
+            : "text-[#6B7280]"
+        }`}
+      >
+        Log in
+      </button>
+    </div>
+  );
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const [mode, setMode] = useState(AUTH_MODES.SIGN_UP);
   const [displayName, setDisplayName] = useState(() => getStoredDisplayName());
   const [email, setEmail] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
-  const [cooldownRemainingMs, setCooldownRemainingMs] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    const storedTimestamp =
-      Number.parseInt(window.localStorage.getItem(MAGIC_LINK_LAST_SENT_KEY) || "0", 10) || 0;
-    return Math.max(0, storedTimestamp + MAGIC_LINK_COOLDOWN_MS - Date.now());
-  });
-
-  const cooldownLabel = useMemo(() => {
-    if (cooldownRemainingMs <= 0) return "";
-    const seconds = Math.ceil(cooldownRemainingMs / 1000);
-    return `${seconds}s`;
-  }, [cooldownRemainingMs]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -54,66 +76,105 @@ export default function OnboardingPage() {
     };
   }, [router]);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    const trimmedName = displayName.trim();
-    const trimmedEmail = email.trim();
-    if (!trimmedName || !trimmedEmail || !supabase || cooldownRemainingMs > 0) return;
-
-    setIsSending(true);
+  function resetMessages() {
     setFeedback("");
     setError("");
-    setStoredDisplayName(trimmedName);
+  }
 
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: trimmedEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/groups`,
-        data: {
-          display_name: trimmedName,
-          name: trimmedName,
-        },
-      },
-    });
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (!supabase || isSubmitting) return;
 
-    if (authError) {
-      if (
-        authError.message?.includes("email rate limit exceeded") ||
-        authError.code === "over_email_send_rate_limit"
-      ) {
-        setError(
-          "Supabase is throttling magic-link emails right now. Wait about a minute, then try again, or use the link already sent to that email.",
-        );
-      } else {
-        setError(authError.message);
-      }
-      setIsSending(false);
+    const trimmedName = displayName.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    resetMessages();
+
+    if (!trimmedEmail) {
+      setError("Add your email first.");
       return;
     }
 
-    const sentAt = Date.now();
-    window.localStorage.setItem(MAGIC_LINK_LAST_SENT_KEY, String(sentAt));
-    setCooldownRemainingMs(MAGIC_LINK_COOLDOWN_MS);
-    setFeedback("Magic link sent. Open it on this phone to jump into Evenly.");
-    setIsSending(false);
-  }
+    if (!password) {
+      setError("Add your password first.");
+      return;
+    }
 
-  useEffect(() => {
-    if (!cooldownRemainingMs) return undefined;
+    if (password.length < 6) {
+      setError("Use at least 6 characters for the password.");
+      return;
+    }
 
-    const interval = window.setInterval(() => {
-      const storedTimestamp =
-        Number.parseInt(window.localStorage.getItem(MAGIC_LINK_LAST_SENT_KEY) || "0", 10) || 0;
-      const remaining = Math.max(0, storedTimestamp + MAGIC_LINK_COOLDOWN_MS - Date.now());
-      setCooldownRemainingMs(remaining);
+    setIsSubmitting(true);
 
-      if (!remaining) {
-        window.clearInterval(interval);
+    if (mode === AUTH_MODES.SIGN_UP) {
+      if (!trimmedName) {
+        setError("Add your name first.");
+        setIsSubmitting(false);
+        return;
       }
-    }, 1000);
 
-    return () => window.clearInterval(interval);
-  }, [cooldownRemainingMs]);
+      if (password !== confirmPassword) {
+        setError("Your passwords need to match.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      setStoredDisplayName(trimmedName);
+
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+        options: {
+          data: {
+            display_name: trimmedName,
+            name: trimmedName,
+          },
+        },
+      });
+
+      if (authError) {
+        setError(authError.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (data.session?.user) {
+        router.replace("/groups");
+        return;
+      }
+
+      setFeedback(
+        "Account created. If your Supabase project still requires email confirmation, confirm once and then log in here.",
+      );
+      setMode(AUTH_MODES.LOG_IN);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: trimmedEmail,
+      password,
+    });
+
+    if (authError) {
+      setError(authError.message);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const rememberedName =
+      trimmedName ||
+      data.user?.user_metadata?.display_name ||
+      data.user?.user_metadata?.name ||
+      getStoredDisplayName();
+
+    if (rememberedName) {
+      setStoredDisplayName(rememberedName);
+    }
+
+    router.replace("/groups");
+  }
 
   return (
     <main className="min-h-screen bg-white">
@@ -127,31 +188,49 @@ export default function OnboardingPage() {
         </h1>
 
         <p
-          className="mt-3 mb-[60px] text-center text-[13px] font-semibold tracking-[-0.02em] text-[#8BA888]"
-          style={{ fontFamily: "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" }}
+          className="mt-3 mb-[44px] text-center text-[13px] font-semibold tracking-[-0.02em] text-[#8BA888]"
+          style={{
+            fontFamily:
+              "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
+          }}
         >
-          So happy to have you here.
+          Roommates, trips, and shared tabs without the awkwardness.
         </p>
 
-        <div className="relative mb-[60px] h-[280px] w-[320px]">
+        <div className="relative mb-[44px] h-[280px] w-[320px]">
           <div className="absolute left-2 top-1 h-[140px] w-[200px] -rotate-12 rounded-[45%_55%_58%_42%/48%_62%_38%_52%] bg-[#C0CFB2]" />
           <div className="absolute right-2 top-[92px] h-[120px] w-[180px] rotate-[8deg] rounded-[62%_38%_41%_59%/52%_46%_54%_48%] bg-[#8BA888]" />
           <div className="absolute bottom-1 left-[34px] h-[130px] w-[210px] -rotate-6 rounded-[56%_44%_63%_37%/40%_58%_42%_60%] bg-[#3A4E43]" />
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full max-w-[340px]">
-          <input
-            type="text"
-            autoComplete="name"
-            placeholder="Your name"
-            value={displayName}
-            onChange={(event) => {
-              setDisplayName(event.target.value);
-              if (error) setError("");
+        <div className="w-full max-w-[340px] text-center">
+          <AuthModeToggle
+            mode={mode}
+            onChange={(nextMode) => {
+              setMode(nextMode);
+              resetMessages();
             }}
-            className="h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
-            style={{ fontFamily: "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" }}
           />
+        </div>
+
+        <form onSubmit={handleSubmit} className="w-full max-w-[340px]">
+          {mode === AUTH_MODES.SIGN_UP ? (
+            <input
+              type="text"
+              autoComplete="name"
+              placeholder="Your name"
+              value={displayName}
+              onChange={(event) => {
+                setDisplayName(event.target.value);
+                if (error) setError("");
+              }}
+              className="h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
+              style={{
+                fontFamily:
+                  "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
+              }}
+            />
+          ) : null}
 
           <input
             type="email"
@@ -163,21 +242,69 @@ export default function OnboardingPage() {
               setEmail(event.target.value);
               if (error) setError("");
             }}
-            className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
-            style={{ fontFamily: "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" }}
+            className={`${mode === AUTH_MODES.SIGN_UP ? "mt-4" : ""} h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none`}
+            style={{
+              fontFamily:
+                "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
+            }}
           />
+
+          <input
+            type="password"
+            autoComplete={mode === AUTH_MODES.SIGN_UP ? "new-password" : "current-password"}
+            placeholder="Password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              if (error) setError("");
+            }}
+            className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
+            style={{
+              fontFamily:
+                "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
+            }}
+          />
+
+          {mode === AUTH_MODES.SIGN_UP ? (
+            <input
+              type="password"
+              autoComplete="new-password"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(event) => {
+                setConfirmPassword(event.target.value);
+                if (error) setError("");
+              }}
+              className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
+              style={{
+                fontFamily:
+                  "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
+              }}
+            />
+          ) : null}
 
           <button
             type="submit"
-            disabled={!displayName.trim() || !email.trim() || isSending || !supabase || cooldownRemainingMs > 0}
-            className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#8BA888] text-[16px] font-semibold text-white transition duration-200 ease-out hover:bg-[#5F7D6A] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#C0CFB2]"
-            style={{ fontFamily: "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" }}
+            disabled={
+              !email.trim() ||
+              !password ||
+              isSubmitting ||
+              !supabase ||
+              (mode === AUTH_MODES.SIGN_UP && (!displayName.trim() || !confirmPassword))
+            }
+            className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#5F7D6A] text-[16px] font-semibold text-white transition duration-200 ease-out hover:bg-[#3A4E43] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#C0CFB2]"
+            style={{
+              fontFamily:
+                "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
+            }}
           >
-            {isSending
-              ? "Sending..."
-              : cooldownRemainingMs > 0
-                ? `Wait ${cooldownLabel}`
-                : "Send me the magic link!"}
+            {isSubmitting
+              ? mode === AUTH_MODES.SIGN_UP
+                ? "Creating account..."
+                : "Logging in..."
+              : mode === AUTH_MODES.SIGN_UP
+                ? "Create my account"
+                : "Log me in"}
           </button>
 
           {feedback ? (
@@ -196,7 +323,7 @@ export default function OnboardingPage() {
 
           {supabase ? (
             <p className="mt-4 text-center text-[12px] font-medium text-[#9CA3AF]">
-              Names are remembered on this device and synced into the app after sign-in.
+              Your name is remembered on this device and synced into Evenly after you sign in.
             </p>
           ) : null}
         </form>
