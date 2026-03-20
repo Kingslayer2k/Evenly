@@ -158,7 +158,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
 
         {currentStep === 1 ? (
           <div className="flex h-[calc(85vh-56px)] flex-col">
-            <div className="px-6 pt-6">
+            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
               <h2 className="text-[28px] font-bold text-[#1C1917]">New group</h2>
               <p className="mt-2 text-[15px] font-normal text-[#6B7280]">
                 Roomies, trip crew, weekend away.
@@ -178,41 +178,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
               <div className="mt-6">
                 <div className="text-[13px] font-medium text-[#6B7280]">Card color</div>
 
-                <div
-                  className="mt-3 overflow-hidden rounded-[24px] border border-white/70 shadow-[0_8px_20px_rgba(28,25,23,0.08)]"
-                  style={{ backgroundColor: selectedColor }}
-                >
-                  <div className="aspect-[3.375/2.125] bg-[rgba(28,25,23,0.16)] px-5 py-5 text-white">
-                    <div className="flex h-full flex-col">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div
-                            className="text-[26px] font-semibold leading-[0.96] tracking-[-0.04em]"
-                            style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
-                          >
-                            {groupName.trim() || "Your group"}
-                          </div>
-                          <div className="mt-2 text-[14px] text-white/85">You and the crew</div>
-                        </div>
-                        <div className="text-right text-[16px] font-semibold">$0</div>
-                      </div>
-
-                      <div className="mt-auto flex items-end justify-between">
-                        <div>
-                          <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/70">
-                            settled up.
-                          </div>
-                          <div className="mt-2 text-[34px] font-bold tracking-[-0.05em]">
-                            +$0.00
-                          </div>
-                        </div>
-                        <div className="text-[12px] text-white/82">0 expenses • code soon</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="mt-3 flex flex-wrap gap-3">
                   {PRESET_COLORS.map((color) => {
                     const isSelected = selectedColor.toLowerCase() === color.toLowerCase();
                     return (
@@ -249,6 +215,40 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                     tabIndex={-1}
                   />
                 </div>
+
+                <div
+                  className="mx-auto mt-4 max-w-[360px] overflow-hidden rounded-[24px] border border-white/70 shadow-[0_8px_20px_rgba(28,25,23,0.08)]"
+                  style={{ backgroundColor: selectedColor }}
+                >
+                  <div className="aspect-[3.375/2.125] bg-[rgba(28,25,23,0.16)] px-5 py-5 text-white">
+                    <div className="flex h-full flex-col">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div
+                            className="text-[26px] font-semibold leading-[0.96] tracking-[-0.04em]"
+                            style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+                          >
+                            {groupName.trim() || "Your group"}
+                          </div>
+                          <div className="mt-2 text-[14px] text-white/85">You and the crew</div>
+                        </div>
+                        <div className="text-right text-[16px] font-semibold">$0</div>
+                      </div>
+
+                      <div className="mt-auto flex items-end justify-between">
+                        <div>
+                          <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/70">
+                            settled up.
+                          </div>
+                          <div className="mt-2 text-[34px] font-bold tracking-[-0.05em]">
+                            +$0.00
+                          </div>
+                        </div>
+                        <div className="text-[12px] text-white/82">0 expenses • code soon</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {error ? (
@@ -256,7 +256,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
               ) : null}
             </div>
 
-            <div className="mt-auto px-6 pb-6">
+            <div className="mt-auto border-t border-[#E5E7EB] bg-white px-6 py-4">
               <div className="flex justify-end">
                 <button
                   type="button"
