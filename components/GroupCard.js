@@ -44,7 +44,7 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
         <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-[#0070F3] shadow-[0_0_0_4px_rgba(255,255,255,0.18)]" />
       ) : null}
 
-      <div className={`relative aspect-[3.375/2.125] w-full ${collapsed ? "px-5 pt-2.5 pb-5" : "px-6 pt-5 pb-5"}`}>
+      <div className={`relative aspect-[3.375/2.125] w-full ${collapsed ? "px-5 pt-2.5 pb-6" : "px-6 pt-5 pb-6"}`}>
         {collapsed ? (
           <div className="flex h-[30px] items-start justify-between gap-3">
             <h3
@@ -121,7 +121,7 @@ export default function GroupCard({ group, onClick, onColorChange, collapsed = f
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-4 text-[12px] font-medium text-white/82">
+              <div className="mt-5 flex items-center justify-between gap-4 text-[12px] font-medium leading-none text-white/82">
                 <div className="truncate">
                   {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"} • code {group.code}
                 </div>
