@@ -395,6 +395,27 @@ export default function GroupsPage() {
       </header>
 
       <div className="mx-auto w-full max-w-[420px] px-5 pt-[108px] pb-12">
+        {user ? (
+          <div className="mb-5 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCreateOpen(true)}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#0070F3] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0060D6] active:scale-[0.98]"
+            >
+              <PlusIcon />
+              <span>Create group</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsJoinOpen(true)}
+              className="inline-flex items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-4 py-3 text-[15px] font-semibold text-[#1C1917] transition hover:bg-[#F7F7F5] active:scale-[0.98]"
+            >
+              Join by code
+            </button>
+          </div>
+        ) : null}
+
         {!supabase ? (
           <section className="pt-10">
             <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
@@ -484,8 +505,13 @@ export default function GroupsPage() {
               </div>
             </div>
 
-            <div className="mt-6 text-center text-[14px] text-[#6B7280]">
-              Hi {profileName || getDisplayNameFromUser(user, "")}.
+            <div className="mt-6 text-center">
+              <div className="text-[14px] text-[#6B7280]">
+                Hi {profileName || getDisplayNameFromUser(user, "")}.
+              </div>
+              <div className="mt-2 text-[13px] text-[#9CA3AF]">
+                Tap a card to open it. Tap <span className="font-semibold text-[#6B7280]">Color</span> to change the card color.
+              </div>
             </div>
           </section>
         )}

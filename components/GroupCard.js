@@ -84,10 +84,11 @@ export default function GroupCard({ group, onClick, onColorChange }) {
                 <button
                   type="button"
                   onClick={handleColorButtonClick}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/35 bg-white/14 text-white/92 transition hover:border-[#0060D6] hover:bg-[#0060D6] hover:text-white active:scale-[0.96]"
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#0060D6] hover:bg-[#0060D6] hover:text-white active:scale-[0.96]"
                   aria-label={`Change ${group.name} card color`}
                 >
                   <FourSquaresIcon />
+                  <span>Color</span>
                 </button>
                 <input
                   ref={colorInputRef}
