@@ -29,7 +29,7 @@ export default function AddExpenseModal({
     }, {}),
   );
   const [contextId, setContextId] = useState(contexts?.[0]?.id || "");
-  const [contextName, setContextName] = useState(contexts?.[0]?.name || contexts?.[0]?.title || "");
+  const [contextName, setContextName] = useState(contexts?.[0]?.name || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -121,7 +121,7 @@ export default function AddExpenseModal({
     setContextName(nextName);
 
     const matchingContext = (contexts || []).find((context) => {
-      const label = String(context.name || context.title || "").trim().toLowerCase();
+      const label = String(context.name || "").trim().toLowerCase();
       return label === nextName.trim().toLowerCase();
     });
 
@@ -220,7 +220,7 @@ export default function AddExpenseModal({
               {(contexts || []).length ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(contexts || []).map((context) => {
-                    const label = context.name || context.title || "Shared";
+                    const label = context.name || "Shared";
                     const active = contextId === context.id || contextName.trim() === label;
                     return (
                       <button
