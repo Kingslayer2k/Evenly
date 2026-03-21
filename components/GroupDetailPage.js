@@ -10,6 +10,7 @@ import SettlementCard from "./SettlementCard";
 import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
 import {
+  loadUserContacts,
   createSettlementRecord,
   createExpenseRecord,
   deleteExpenseRecord,
@@ -78,6 +79,7 @@ export default function GroupDetailPage({ groupId }) {
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [contexts, setContexts] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [recordedSettlements, setRecordedSettlements] = useState([]);
   const [cardColor, setCardColor] = useState(getStableCardColor(groupId));
   const [cardImage, setCardImage] = useState("");
@@ -116,13 +118,17 @@ export default function GroupDetailPage({ groupId }) {
       setErrorMessage("");
 
       try {
-        const bundle = await loadGroupDetailBundle(supabase, groupId, currentUser);
+        const [bundle, nextContacts] = await Promise.all([
+          loadGroupDetailBundle(supabase, groupId, currentUser),
+          loadUserContacts(supabase, currentUser),
+        ]);
         setProfileName(bundle.profileName);
         setGroup(bundle.group);
         setMembership(bundle.membership);
         setMembers(bundle.members);
         setExpenses(bundle.expenses);
         setContexts(bundle.contexts);
+        setContacts(nextContacts || []);
         setRecordedSettlements(bundle.recordedSettlements || []);
         setCardColor(
           readStoredCardColor(bundle.group?.id) ||
@@ -682,7 +688,7 @@ export default function GroupDetailPage({ groupId }) {
         </div>
       ) : null}
 
-      {isExpenseModalOpen ? (
+        {isExpenseModalOpen ? (
         <AddExpenseModal
           key={`expense-${groupId}-${membership?.id || "none"}-${members.length}`}
           isOpen={isExpenseModalOpen}
@@ -690,6 +696,7 @@ export default function GroupDetailPage({ groupId }) {
           onSubmit={handleCreateExpense}
           members={members}
           contexts={contexts}
+          contacts={contacts}
           initialPayerId={membership?.id}
         />
       ) : null}

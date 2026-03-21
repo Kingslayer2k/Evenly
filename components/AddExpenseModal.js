@@ -15,17 +15,26 @@ export default function AddExpenseModal({
   onSubmit,
   members,
   contexts,
+  contacts = [],
   initialPayerId,
 }) {
   const memberIds = (members || []).map((member) => member.id);
+  const contactIds = (contacts || []).map((contact) => contact.id);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [paidBy, setPaidBy] = useState(initialPayerId || memberIds[0] || "");
   const [splitMode, setSplitMode] = useState("equal");
   const [selectedParticipants, setSelectedParticipants] = useState(memberIds);
+  const [selectedContactIds, setSelectedContactIds] = useState([]);
   const [customAmounts, setCustomAmounts] = useState(
     memberIds.reduce((accumulator, memberId) => {
       accumulator[memberId] = "";
+      return accumulator;
+    }, {}),
+  );
+  const [customContactAmounts, setCustomContactAmounts] = useState(
+    contactIds.reduce((accumulator, contactId) => {
+      accumulator[contactId] = "";
       return accumulator;
     }, {}),
   );
@@ -41,10 +50,17 @@ export default function AddExpenseModal({
     () => (members || []).filter((member) => selectedParticipants.includes(member.id)),
     [members, selectedParticipants],
   );
+  const selectedContacts = useMemo(
+    () => (contacts || []).filter((contact) => selectedContactIds.includes(contact.id)),
+    [contacts, selectedContactIds],
+  );
 
   const customTotalCents = useMemo(() => {
     return selectedParticipants.reduce((sum, memberId) => sum + toCents(customAmounts[memberId]), 0);
   }, [customAmounts, selectedParticipants]);
+  const customContactTotalCents = useMemo(() => {
+    return selectedContactIds.reduce((sum, contactId) => sum + toCents(customContactAmounts[contactId]), 0);
+  }, [customContactAmounts, selectedContactIds]);
 
   if (!isOpen) return null;
 
@@ -54,6 +70,15 @@ export default function AddExpenseModal({
         return previous.filter((id) => id !== memberId);
       }
       return [...previous, memberId];
+    });
+  }
+
+  function toggleContact(contactId) {
+    setSelectedContactIds((previous) => {
+      if (previous.includes(contactId)) {
+        return previous.filter((id) => id !== contactId);
+      }
+      return [...previous, contactId];
     });
   }
 
@@ -77,19 +102,51 @@ export default function AddExpenseModal({
     }
 
     if (!selectedParticipants.length) {
-      setError("Choose at least one person in the split.");
+      setError("Keep at least one group member in the split.");
       return;
     }
 
     let shares = null;
+    let contactShares = {};
+    let effectiveSplitType = splitMode;
+
     if (splitMode === "custom") {
-      if (customTotalCents !== amountCents) {
+      if (customTotalCents + customContactTotalCents !== amountCents) {
         setError("Custom shares need to add up to the full amount.");
         return;
       }
 
       shares = selectedParticipants.reduce((accumulator, memberId) => {
         accumulator[memberId] = toCents(customAmounts[memberId]);
+        return accumulator;
+      }, {});
+      contactShares = selectedContactIds.reduce((accumulator, contactId) => {
+        accumulator[contactId] = toCents(customContactAmounts[contactId]);
+        return accumulator;
+      }, {});
+    } else if (selectedContactIds.length) {
+      effectiveSplitType = "custom";
+      const totalSplitCount = selectedParticipants.length + selectedContactIds.length;
+      const baseShare = Math.floor(amountCents / totalSplitCount);
+      let remainder = amountCents - baseShare * totalSplitCount;
+      const allocation = {};
+
+      for (const memberId of selectedParticipants) {
+        allocation[`member:${memberId}`] = baseShare + (remainder > 0 ? 1 : 0);
+        remainder = Math.max(0, remainder - 1);
+      }
+
+      for (const contactId of selectedContactIds) {
+        allocation[`contact:${contactId}`] = baseShare + (remainder > 0 ? 1 : 0);
+        remainder = Math.max(0, remainder - 1);
+      }
+
+      shares = selectedParticipants.reduce((accumulator, memberId) => {
+        accumulator[memberId] = allocation[`member:${memberId}`] || 0;
+        return accumulator;
+      }, {});
+      contactShares = selectedContactIds.reduce((accumulator, contactId) => {
+        accumulator[contactId] = allocation[`contact:${contactId}`] || 0;
         return accumulator;
       }, {});
     }
@@ -102,8 +159,10 @@ export default function AddExpenseModal({
       amountCents,
       paidBy,
       participants: selectedParticipants,
-      splitType: splitMode,
+      splitType: effectiveSplitType,
       shares,
+      contactParticipants: selectedContactIds,
+      contactShares,
       contextId: contextId || null,
       contextName: contextName.trim() || null,
     });
@@ -330,15 +389,66 @@ export default function AddExpenseModal({
             </div>
           </div>
 
+          {(contacts || []).length ? (
+            <div>
+              <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+                Contacts not on Evenly
+              </div>
+              <div className="mt-3 space-y-3">
+                {(contacts || []).map((contact) => {
+                  const checked = selectedContactIds.includes(contact.id);
+                  return (
+                    <div
+                      key={contact.id}
+                      className="rounded-2xl border border-[#E5E7EB] bg-[#FAFAF8] p-4"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <label className="flex items-center gap-3 text-[15px] text-[#1C1917]">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleContact(contact.id)}
+                            className="h-4 w-4 rounded border-[#D1D5DB] text-[#5F7D6A] focus:ring-[#5F7D6A]"
+                          />
+                          <span>{contact.display_name}</span>
+                        </label>
+
+                        {splitMode === "custom" && checked ? (
+                          <div className="flex h-10 items-center rounded-xl border border-[#E5E7EB] bg-white px-3">
+                            <span className="text-[14px] font-semibold text-[#1C1917]">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={customContactAmounts[contact.id] || ""}
+                              onChange={(event) =>
+                                setCustomContactAmounts((previous) => ({
+                                  ...previous,
+                                  [contact.id]: event.target.value,
+                                }))
+                              }
+                              className="ml-2 w-24 bg-transparent text-right text-[14px] text-[#1C1917] outline-none"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           {splitMode === "equal" ? (
             <div className="rounded-2xl bg-[#E1F9D8] px-4 py-3 text-[14px] text-[#3A4E43]">
-              {selectedMembers.length
-                ? `Each person covers about $${(amountCents / 100 / selectedMembers.length || 0).toFixed(2)}.`
+              {selectedMembers.length || selectedContacts.length
+                ? `Each person covers about $${(amountCents / 100 / (selectedMembers.length + selectedContacts.length) || 0).toFixed(2)}.`
                 : "Pick at least one person to split this with."}
             </div>
           ) : (
             <div className="rounded-2xl bg-[#E1F9D8] px-4 py-3 text-[14px] text-[#3A4E43]">
-              Custom total: ${(customTotalCents / 100).toFixed(2)} of ${(amountCents / 100).toFixed(2)}
+              Custom total: ${((customTotalCents + customContactTotalCents) / 100).toFixed(2)} of ${(amountCents / 100).toFixed(2)}
             </div>
           )}
 

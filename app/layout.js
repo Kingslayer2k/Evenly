@@ -1,4 +1,5 @@
 import "./globals.css";
+import BottomNav from "../components/BottomNav";
 
 export const metadata = {
   title: "Evenly",
@@ -16,6 +17,7 @@ export default function RootLayout({ children }) {
         }}
       >
         {children}
+        <BottomNav />
       </body>
     </html>
   );

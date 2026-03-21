@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import CreateGroupModal from "../../components/CreateGroupModal";
 import GroupCard from "../../components/GroupCard";
@@ -33,6 +34,7 @@ import {
   needsAttention,
   sumGroupTotal,
 } from "../../lib/utils";
+import { pageTransition } from "../../lib/animations";
 
 function IconButton({ children, onClick, label, spinning = false }) {
   return (
@@ -244,6 +246,7 @@ function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageC
 
 export default function GroupsPage() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const toastTimeoutRef = useRef(null);
   const refreshTimerRef = useRef(null);
   const [user, setUser] = useState(null);
@@ -636,7 +639,12 @@ export default function GroupsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#F7F7F5]">
+    <motion.main
+      className="min-h-screen bg-[#F7F7F5]"
+      initial={reduceMotion ? false : pageTransition.initial}
+      animate={reduceMotion ? undefined : pageTransition.animate}
+      transition={pageTransition.transition}
+    >
       <header className="fixed inset-x-0 top-0 z-30 border-b border-[#E5E7EB] bg-white/95 px-5 py-4 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[420px] items-center justify-between">
           <IconButton label="Open settings" onClick={() => setIsSettingsOpen(true)}>
@@ -659,7 +667,7 @@ export default function GroupsPage() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[420px] px-5 pt-[108px] pb-12">
+      <div className="mx-auto w-full max-w-[420px] px-5 pt-[108px] pb-28">
         {user && displayGroups.length > 0 ? (
           <div className="mb-5 flex items-center gap-3">
             <button
@@ -823,6 +831,6 @@ export default function GroupsPage() {
         onColorChange={handleCardColorChange}
         onImageChange={handleCardImageChange}
       />
-    </main>
+    </motion.main>
   );
 }

@@ -1,0 +1,168 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
+import { computeExpenseShares, getExpenseTitle } from "../lib/utils";
+
+function settlementAmount(settlement) {
+  if (settlement?.amount != null) return Number(settlement.amount || 0);
+  return Number(settlement?.amount_cents || 0) / 100;
+}
+
+export default function useActivityFeed(user, limit = 10) {
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!supabase || !user) {
+      setItems([]);
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadActivity() {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const membershipsResponse = await supabase
+          .from("group_members")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (membershipsResponse.error) throw membershipsResponse.error;
+
+        const memberships = membershipsResponse.data || [];
+        const groupIds = [...new Set(memberships.map((membership) => membership.group_id).filter(Boolean))];
+
+        if (!groupIds.length) {
+          if (isMounted) {
+            setItems([]);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        const [groupsResponse, membersResponse, expensesResponse, settlementsResponse] = await Promise.all([
+          supabase.from("groups").select("id, name").in("id", groupIds),
+          supabase.from("group_members").select("*").in("group_id", groupIds),
+          supabase.from("expenses").select("*").in("group_id", groupIds).order("created_at", { ascending: false }),
+          supabase.from("settlements").select("*").in("group_id", groupIds).order("settled_at", { ascending: false }),
+        ]);
+
+        if (groupsResponse.error) throw groupsResponse.error;
+        if (membersResponse.error) throw membersResponse.error;
+        if (expensesResponse.error) throw expensesResponse.error;
+
+        const settlementsTableMissing =
+          settlementsResponse.error &&
+          (String(settlementsResponse.error.code || "") === "PGRST205" ||
+            String(settlementsResponse.error.code || "") === "42P01" ||
+            /settlements/i.test(String(settlementsResponse.error.message || "")));
+
+        if (settlementsResponse.error && !settlementsTableMissing) {
+          throw settlementsResponse.error;
+        }
+
+        const currentMembershipByGroup = new Map(
+          memberships.map((membership) => [membership.group_id, membership]),
+        );
+        const groupNameById = new Map((groupsResponse.data || []).map((group) => [group.id, group.name]));
+        const memberById = new Map((membersResponse.data || []).map((member) => [member.id, member]));
+        const memberByUserId = new Map();
+
+        for (const member of membersResponse.data || []) {
+          if (!memberByUserId.has(member.user_id)) {
+            memberByUserId.set(member.user_id, member);
+          }
+        }
+
+        const activityItems = [];
+
+        for (const expense of expensesResponse.data || []) {
+          const currentMembership = currentMembershipByGroup.get(expense.group_id);
+          if (!currentMembership) continue;
+
+          const participantIds = Array.isArray(expense.participants) ? expense.participants : [];
+          if (!participantIds.includes(currentMembership.id) && expense.paid_by !== currentMembership.id) continue;
+
+          const payer = memberById.get(expense.paid_by);
+          const relatedUserIds = participantIds
+            .map((participantId) => memberById.get(participantId)?.user_id)
+            .filter((participantUserId) => participantUserId && participantUserId !== user.id);
+
+          const shares = computeExpenseShares(expense);
+          const currentShare = Number(shares[currentMembership.id] || 0) / 100;
+
+          activityItems.push({
+            id: `expense-${expense.id}`,
+            type: "expense",
+            icon: expense.title?.toLowerCase().includes("pizza")
+              ? "🍕"
+              : expense.title?.toLowerCase().includes("grocery")
+                ? "🛒"
+                : "💸",
+            title:
+              expense.paid_by === currentMembership.id
+                ? `You added ${getExpenseTitle(expense)}`
+                : `${payer?.display_name || "Someone"} added ${getExpenseTitle(expense)}`,
+            meta: `${groupNameById.get(expense.group_id) || "Shared group"} • ${expense.paid_by === currentMembership.id ? `Your share ${currentShare ? `$${currentShare.toFixed(2)}` : ""}` : "Shared expense"}`.trim(),
+            groupId: expense.group_id,
+            createdAt: expense.created_at,
+            relatedUserIds,
+          });
+        }
+
+        for (const settlement of settlementsTableMissing ? [] : settlementsResponse.data || []) {
+          if (settlement.from_user_id !== user.id && settlement.to_user_id !== user.id) continue;
+
+          const otherUserId = settlement.from_user_id === user.id ? settlement.to_user_id : settlement.from_user_id;
+          const otherMember = memberByUserId.get(otherUserId);
+          const otherName = otherMember?.display_name || "Someone";
+          const outgoing = settlement.from_user_id === user.id;
+
+          activityItems.push({
+            id: `settlement-${settlement.id}`,
+            type: "settlement",
+            icon: "💰",
+            title: outgoing ? `You settled up with ${otherName}` : `${otherName} settled up`,
+            meta: `${groupNameById.get(settlement.group_id) || "Shared group"} • ${settlement.payment_method || "payment"} • $${settlementAmount(settlement).toFixed(2)}`,
+            groupId: settlement.group_id,
+            createdAt: settlement.settled_at || settlement.created_at,
+            relatedUserIds: otherUserId ? [otherUserId] : [],
+          });
+        }
+
+        activityItems.sort(
+          (left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime(),
+        );
+
+        if (!isMounted) return;
+        setItems(activityItems.slice(0, limit));
+      } catch (nextError) {
+        console.error(nextError);
+        if (!isMounted) return;
+        setError(nextError.message || "Could not load activity yet.");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadActivity();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [limit, user]);
+
+  return {
+    items,
+    isLoading,
+    error,
+  };
+}
