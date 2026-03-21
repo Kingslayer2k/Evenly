@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddExpenseModal from "./AddExpenseModal";
 import ExpenseDetail from "./ExpenseDetail";
+import PaymentModal from "./PaymentModal";
 import PayerSwitchModal from "./PayerSwitchModal";
+import SettlementCard from "./SettlementCard";
 import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
 import {
+  createSettlementRecord,
   createExpenseRecord,
   deleteExpenseRecord,
   loadGroupDetailBundle,
@@ -75,6 +78,7 @@ export default function GroupDetailPage({ groupId }) {
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [contexts, setContexts] = useState([]);
+  const [recordedSettlements, setRecordedSettlements] = useState([]);
   const [cardColor, setCardColor] = useState(getStableCardColor(groupId));
   const [cardImage, setCardImage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -85,6 +89,8 @@ export default function GroupDetailPage({ groupId }) {
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [expenseToReassign, setExpenseToReassign] = useState(null);
   const [isDeletingExpense, setIsDeletingExpense] = useState(false);
+  const [paymentFlow, setPaymentFlow] = useState(null);
+  const [isSavingSettlement, setIsSavingSettlement] = useState(false);
 
   const showToast = useCallback((message) => {
     if (toastTimeoutRef.current) {
@@ -117,6 +123,7 @@ export default function GroupDetailPage({ groupId }) {
         setMembers(bundle.members);
         setExpenses(bundle.expenses);
         setContexts(bundle.contexts);
+        setRecordedSettlements(bundle.recordedSettlements || []);
         setCardColor(
           readStoredCardColor(bundle.group?.id) ||
             bundle.group?.card_color ||
@@ -229,8 +236,8 @@ export default function GroupDetailPage({ groupId }) {
   }, [groupId, scheduleRefresh, user]);
 
   const summary = useMemo(
-    () => getUserSettlementSummary(members, expenses, membership),
-    [expenses, members, membership],
+    () => getUserSettlementSummary(members, expenses, membership, recordedSettlements),
+    [expenses, members, membership, recordedSettlements],
   );
 
   const totalSpent = useMemo(() => sumGroupTotal(expenses), [expenses]);
@@ -238,6 +245,14 @@ export default function GroupDetailPage({ groupId }) {
   const inviteCode = group?.join_code || group?.code || "------";
   const shareLink = typeof window !== "undefined" ? `${window.location.origin}/groups?join=${inviteCode}` : "";
   const displayName = profileName || getDisplayNameFromUser(user, "");
+
+  const getCounterpartyForSettlement = useCallback(
+    (item, direction) => {
+      const targetUserId = direction === "pay" ? item?.toUserId : item?.fromUserId;
+      return members.find((member) => member.user_id === targetUserId) || null;
+    },
+    [members],
+  );
 
   const handleCreateExpense = useCallback(
     async ({ title, amountCents, paidBy, participants, splitType, shares, contextId, contextName }) => {
@@ -319,6 +334,59 @@ export default function GroupDetailPage({ groupId }) {
       }
     },
     [loadDetail, showToast, user],
+  );
+
+  const handleOpenSettlement = useCallback(
+    (item, direction) => {
+      setPaymentFlow({
+        item,
+        direction,
+      });
+    },
+    [],
+  );
+
+  const handleConfirmSettlement = useCallback(
+    async ({ settlementItem, method, direction, counterparty }) => {
+      if (!supabase || !user) {
+        return;
+      }
+
+      const fromUserId = direction === "pay" ? user.id : counterparty?.user_id;
+      const toUserId = direction === "pay" ? counterparty?.user_id : user.id;
+
+      if (!fromUserId || !toUserId) {
+        showToast("We need both people linked before we can mark this settled");
+        return;
+      }
+
+      setIsSavingSettlement(true);
+
+      try {
+        await createSettlementRecord(supabase, {
+          groupId,
+          fromUserId,
+          toUserId,
+          amount: settlementItem.amount,
+          paymentMethod: method,
+          notes: `${direction === "pay" ? "Paid" : "Requested"} in ${group?.name || "Evenly"}`,
+        });
+
+        setPaymentFlow(null);
+        await loadDetail(user, { refresh: true });
+        showToast(`Settled with ${counterparty?.display_name || "them"}`);
+      } catch (error) {
+        console.error(error);
+        showToast(
+          error?.message?.toLowerCase().includes("settlements")
+            ? "Create the settlements table in Supabase first"
+            : "Could not record the settlement yet",
+        );
+      } finally {
+        setIsSavingSettlement(false);
+      }
+    },
+    [group?.name, groupId, loadDetail, showToast, user],
   );
 
   async function handleCopyCode() {
@@ -520,46 +588,7 @@ export default function GroupDetailPage({ groupId }) {
               </div>
             </section>
 
-            <section className="mt-6 rounded-[28px] bg-white p-5 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[#1C1917]">Settle up</h2>
-                  <p className="mt-1 text-[14px] text-[#6B7280]">
-                    The cleanest way to even things out right now.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {summary.youOwe.map((item) => (
-                  <div key={`${item.fromMemberId}-${item.toMemberId}`} className="rounded-2xl bg-[#F7F7F5] px-4 py-4">
-                    <div className="text-[15px] font-semibold text-[#1C1917]">
-                      You owe {item.toName}
-                    </div>
-                    <div className="mt-1 text-[14px] text-[#6B7280]">
-                      {formatCurrency(item.amount)} to settle your share.
-                    </div>
-                  </div>
-                ))}
-
-                {summary.owedToYou.map((item) => (
-                  <div key={`${item.fromMemberId}-${item.toMemberId}`} className="rounded-2xl bg-[#F7F7F5] px-4 py-4">
-                    <div className="text-[15px] font-semibold text-[#1C1917]">
-                      {item.fromName} owes you
-                    </div>
-                    <div className="mt-1 text-[14px] text-[#6B7280]">
-                      {formatCurrency(item.amount)} if you want to settle it cleanly.
-                    </div>
-                  </div>
-                ))}
-
-                {!summary.youOwe.length && !summary.owedToYou.length ? (
-                  <div className="rounded-2xl bg-[#F7F7F5] px-4 py-4 text-[14px] text-[#6B7280]">
-                    Everyone is basically even right now.
-                  </div>
-                ) : null}
-              </div>
-            </section>
+            <SettlementCard summary={summary} onAction={handleOpenSettlement} />
 
             <section className="mt-6 rounded-[28px] bg-white p-5 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
               <div className="flex items-center justify-between gap-4">
@@ -689,6 +718,19 @@ export default function GroupDetailPage({ groupId }) {
           onSave={handleReassignPayer}
           expense={expenseToReassign}
           members={members}
+        />
+      ) : null}
+
+      {paymentFlow ? (
+        <PaymentModal
+          isOpen={Boolean(paymentFlow)}
+          direction={paymentFlow.direction}
+          settlementItem={paymentFlow.item}
+          counterparty={getCounterpartyForSettlement(paymentFlow.item, paymentFlow.direction)}
+          groupName={group?.name || "Evenly"}
+          isSubmitting={isSavingSettlement}
+          onClose={() => setPaymentFlow(null)}
+          onConfirmSettlement={handleConfirmSettlement}
         />
       ) : null}
     </main>
