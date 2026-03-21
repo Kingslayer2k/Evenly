@@ -76,7 +76,7 @@ export default function PaymentModal({
         key: "venmo",
         label: "Venmo",
         emoji: "💚",
-        url: buildVenmoLink({
+        action: buildVenmoLink({
           username: handles.venmoUsername,
           amount,
           note,
@@ -87,7 +87,7 @@ export default function PaymentModal({
         key: "zelle",
         label: "Zelle",
         emoji: "🔵",
-        url: buildZelleLink({
+        action: buildZelleLink({
           phone: handles.phone,
           counterpartyName,
           amount,
@@ -99,7 +99,7 @@ export default function PaymentModal({
         key: "cash_app",
         label: "Cash App",
         emoji: "💵",
-        url: buildCashAppLink({
+        action: buildCashAppLink({
           cashtag: handles.cashTag,
           amount,
           note,
@@ -109,7 +109,7 @@ export default function PaymentModal({
         key: "apple_cash",
         label: "Apple Cash",
         emoji: "💬",
-        url: buildAppleCashLink({
+        action: buildAppleCashLink({
           phone: handles.phone,
           direction,
           counterpartyName,
@@ -121,7 +121,7 @@ export default function PaymentModal({
         key: "cash",
         label: "Cash / Other",
         emoji: "💸",
-        url: "",
+        action: null,
       },
     ],
     [amount, counterpartyName, direction, groupName, handles, note],
@@ -162,8 +162,8 @@ export default function PaymentModal({
                   type="button"
                   onClick={() => {
                     setSelectedMethod(method.key);
-                    if (method.url) {
-                      openExternalPaymentLink(method.url);
+                    if (method.action) {
+                      openExternalPaymentLink(method.action);
                     }
                   }}
                   className="flex min-h-14 w-full items-center justify-between rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-left transition hover:bg-[#F3F4F6] active:scale-[0.99]"

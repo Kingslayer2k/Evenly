@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import ReceiptScanner from "./ReceiptScanner";
 
 function toCents(value) {
   const parsed = Number.parseFloat(value);
@@ -31,6 +32,7 @@ export default function AddExpenseModal({
   const [contextId, setContextId] = useState(contexts?.[0]?.id || "");
   const [contextName, setContextName] = useState(contexts?.[0]?.name || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [error, setError] = useState("");
 
   const amountCents = useMemo(() => toCents(amount), [amount]);
@@ -157,6 +159,17 @@ export default function AddExpenseModal({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsScannerOpen(true)}
+              className="flex min-h-[52px] w-full items-center justify-center gap-3 rounded-[12px] bg-[linear-gradient(135deg,#5F7D6A_0%,#3A4E43_100%)] px-4 text-[15px] font-medium text-white transition hover:opacity-95 active:scale-[0.99]"
+            >
+              <span className="text-[18px]">📷</span>
+              <span>Scan receipt</span>
+            </button>
+          </div>
+
           <div>
             <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
               What was it?
@@ -349,6 +362,22 @@ export default function AddExpenseModal({
           </div>
         </form>
       </div>
+
+      {isScannerOpen ? (
+        <ReceiptScanner
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onUseResult={({ amount: detectedAmount, description }) => {
+            if (detectedAmount) {
+              setAmount(String(detectedAmount));
+            }
+            if (description) {
+              setTitle(description);
+            }
+            setError("");
+          }}
+        />
+      ) : null}
     </div>
   );
 }

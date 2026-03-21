@@ -14,19 +14,31 @@ function buildMessageBody({ direction, counterpartyName, amount, groupName, meth
 
 export function buildVenmoLink({ username, amount, note, direction = "pay" }) {
   if (!username) {
-    return "venmo://";
+    return {
+      primaryUrl: "venmo://",
+      fallbackUrl: "https://venmo.com/",
+    };
   }
 
   const txn = direction === "request" ? "charge" : "pay";
-  return `venmo://paycharge?txn=${txn}&recipients=${encodeURIComponent(username)}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`;
+  return {
+    primaryUrl: `venmo://paycharge?txn=${txn}&recipients=${encodeURIComponent(username)}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`,
+    fallbackUrl: `https://venmo.com/${encodeURIComponent(username)}?txn=${txn}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`,
+  };
 }
 
 export function buildCashAppLink({ cashtag, amount, note }) {
   if (!cashtag) {
-    return "cashapp://";
+    return {
+      primaryUrl: "cashapp://",
+      fallbackUrl: "https://cash.app/",
+    };
   }
 
-  return `cashapp://pay?cash_tag=${encodeURIComponent(cashtag)}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`;
+  return {
+    primaryUrl: `cashapp://pay?cash_tag=${encodeURIComponent(cashtag)}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`,
+    fallbackUrl: `https://cash.app/$${encodeURIComponent(cashtag)}/${encodeURIComponent(formatAmount(amount))}`,
+  };
 }
 
 export function buildAppleCashLink({ phone, direction, counterpartyName, amount, groupName }) {
@@ -38,7 +50,10 @@ export function buildAppleCashLink({ phone, direction, counterpartyName, amount,
     methodLabel: "Apple Cash",
   });
   const recipient = phone ? `${phone}` : "";
-  return `sms:${recipient}${recipient ? "" : ""}?&body=${encodeURIComponent(message)}`;
+  return {
+    primaryUrl: `sms:${recipient}?&body=${encodeURIComponent(message)}`,
+    fallbackUrl: "",
+  };
 }
 
 export function buildZelleLink({ phone, counterpartyName, amount, groupName, direction }) {
@@ -50,10 +65,28 @@ export function buildZelleLink({ phone, counterpartyName, amount, groupName, dir
     methodLabel: "Zelle",
   });
   const recipient = phone ? `${phone}` : "";
-  return `sms:${recipient}${recipient ? "" : ""}?&body=${encodeURIComponent(message)}`;
+  return {
+    primaryUrl: `sms:${recipient}?&body=${encodeURIComponent(message)}`,
+    fallbackUrl: "https://www.zellepay.com/",
+  };
 }
 
-export function openExternalPaymentLink(url) {
-  if (typeof window === "undefined" || !url) return;
-  window.location.href = url;
+export function openExternalPaymentLink(action) {
+  if (typeof window === "undefined" || !action?.primaryUrl) return;
+
+  const { primaryUrl, fallbackUrl } = action;
+  const fallbackTimer = window.setTimeout(() => {
+    if (!fallbackUrl || document.visibilityState === "hidden") return;
+    window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+  }, 1400);
+
+  const clearFallback = () => {
+    window.clearTimeout(fallbackTimer);
+    document.removeEventListener("visibilitychange", clearFallback);
+    window.removeEventListener("pagehide", clearFallback);
+  };
+
+  document.addEventListener("visibilitychange", clearFallback);
+  window.addEventListener("pagehide", clearFallback);
+  window.location.href = primaryUrl;
 }
