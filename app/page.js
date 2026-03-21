@@ -12,14 +12,14 @@ const AUTH_MODES = {
 
 function AuthModeToggle({ mode, onChange }) {
   return (
-    <div className="mb-6 inline-flex rounded-full bg-[#F3F4F6] p-1">
+    <div className="mb-6 inline-flex rounded-full bg-[#E1F9D8] p-1 shadow-[0_4px_14px_rgba(95,125,106,0.08)]">
       <button
         type="button"
         onClick={() => onChange(AUTH_MODES.SIGN_UP)}
         className={`rounded-full px-4 py-2 text-[14px] font-semibold transition ${
           mode === AUTH_MODES.SIGN_UP
             ? "bg-white text-[#1C1917] shadow-[0_2px_8px_rgba(28,25,23,0.08)]"
-            : "text-[#6B7280]"
+            : "text-[#5F7D6A]"
         }`}
       >
         Create account
@@ -30,7 +30,7 @@ function AuthModeToggle({ mode, onChange }) {
         className={`rounded-full px-4 py-2 text-[14px] font-semibold transition ${
           mode === AUTH_MODES.LOG_IN
             ? "bg-white text-[#1C1917] shadow-[0_2px_8px_rgba(28,25,23,0.08)]"
-            : "text-[#6B7280]"
+            : "text-[#5F7D6A]"
         }`}
       >
         Log in
@@ -188,7 +188,7 @@ export default function OnboardingPage() {
         </h1>
 
         <p
-          className="mt-3 mb-[44px] text-center text-[13px] font-semibold tracking-[-0.02em] text-[#8BA888]"
+          className="mt-3 mb-[44px] text-center text-[13px] font-semibold tracking-[-0.02em] text-[#5F7D6A]"
           style={{
             fontFamily:
               "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
@@ -198,8 +198,8 @@ export default function OnboardingPage() {
         </p>
 
         <div className="relative mb-[44px] h-[280px] w-[320px]">
-          <div className="absolute left-2 top-1 h-[140px] w-[200px] -rotate-12 rounded-[45%_55%_58%_42%/48%_62%_38%_52%] bg-[#C0CFB2]" />
-          <div className="absolute right-2 top-[92px] h-[120px] w-[180px] rotate-[8deg] rounded-[62%_38%_41%_59%/52%_46%_54%_48%] bg-[#8BA888]" />
+          <div className="absolute left-2 top-1 h-[140px] w-[200px] -rotate-12 rounded-[45%_55%_58%_42%/48%_62%_38%_52%] bg-[#E1F9D8]" />
+          <div className="absolute right-2 top-[92px] h-[120px] w-[180px] rotate-[8deg] rounded-[62%_38%_41%_59%/52%_46%_54%_48%] bg-[#C0CFB2]" />
           <div className="absolute bottom-1 left-[34px] h-[130px] w-[210px] -rotate-6 rounded-[56%_44%_63%_37%/40%_58%_42%_60%] bg-[#3A4E43]" />
         </div>
 
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
                 setDisplayName(event.target.value);
                 if (error) setError("");
               }}
-              className="h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
+              className="h-[52px] w-full rounded-full border border-[#E1F9D8] bg-[#F9FFF7] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
               style={{
                 fontFamily:
                   "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
@@ -242,7 +242,7 @@ export default function OnboardingPage() {
               setEmail(event.target.value);
               if (error) setError("");
             }}
-            className={`${mode === AUTH_MODES.SIGN_UP ? "mt-4" : ""} h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none`}
+            className={`${mode === AUTH_MODES.SIGN_UP ? "mt-4" : ""} h-[52px] w-full rounded-full border border-[#E1F9D8] bg-[#F9FFF7] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none`}
             style={{
               fontFamily:
                 "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
@@ -258,7 +258,7 @@ export default function OnboardingPage() {
               setPassword(event.target.value);
               if (error) setError("");
             }}
-            className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
+            className="mt-4 h-[52px] w-full rounded-full border border-[#E1F9D8] bg-[#F9FFF7] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
             style={{
               fontFamily:
                 "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
@@ -275,7 +275,7 @@ export default function OnboardingPage() {
                 setConfirmPassword(event.target.value);
                 if (error) setError("");
               }}
-              className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#F3F4F6] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
+              className="mt-4 h-[52px] w-full rounded-full border border-[#E1F9D8] bg-[#F9FFF7] px-6 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] focus:outline-none"
               style={{
                 fontFamily:
                   "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
@@ -292,7 +292,7 @@ export default function OnboardingPage() {
               !supabase ||
               (mode === AUTH_MODES.SIGN_UP && (!displayName.trim() || !confirmPassword))
             }
-            className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#5F7D6A] text-[16px] font-semibold text-white transition duration-200 ease-out hover:bg-[#3A4E43] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#C0CFB2]"
+            className="mt-4 h-[52px] w-full rounded-full border-0 bg-[#5F7D6A] text-[16px] font-semibold text-white transition duration-200 ease-out hover:bg-[#3A4E43] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#A3B8A8]"
             style={{
               fontFamily:
                 "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
@@ -308,7 +308,7 @@ export default function OnboardingPage() {
           </button>
 
           {feedback ? (
-            <p className="mt-4 text-center text-[13px] font-medium text-[#5F7D6A]">{feedback}</p>
+            <p className="mt-4 rounded-2xl bg-[#E1F9D8] px-4 py-3 text-center text-[13px] font-medium text-[#3A4E43]">{feedback}</p>
           ) : null}
 
           {error ? (

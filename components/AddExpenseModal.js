@@ -232,8 +232,8 @@ export default function AddExpenseModal({
                         }}
                         className={`rounded-full px-3 py-2 text-[13px] font-medium transition ${
                           active
-                            ? "bg-[#C0CFB2] text-[#3A4E43]"
-                            : "bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB]"
+                            ? "bg-[#E1F9D8] text-[#3A4E43]"
+                            : "bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E1F9D8]"
                         }`}
                       >
                         {label}
@@ -318,13 +318,13 @@ export default function AddExpenseModal({
           </div>
 
           {splitMode === "equal" ? (
-            <div className="rounded-2xl bg-[#F7F7F5] px-4 py-3 text-[14px] text-[#6B7280]">
+            <div className="rounded-2xl bg-[#E1F9D8] px-4 py-3 text-[14px] text-[#3A4E43]">
               {selectedMembers.length
                 ? `Each person covers about $${(amountCents / 100 / selectedMembers.length || 0).toFixed(2)}.`
                 : "Pick at least one person to split this with."}
             </div>
           ) : (
-            <div className="rounded-2xl bg-[#F7F7F5] px-4 py-3 text-[14px] text-[#6B7280]">
+            <div className="rounded-2xl bg-[#E1F9D8] px-4 py-3 text-[14px] text-[#3A4E43]">
               Custom total: ${(customTotalCents / 100).toFixed(2)} of ${(amountCents / 100).toFixed(2)}
             </div>
           )}

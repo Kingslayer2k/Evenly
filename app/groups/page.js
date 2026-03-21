@@ -692,7 +692,7 @@ export default function GroupsPage() {
               <button
                 type="button"
                 onClick={() => router.push("/")}
-                className="mt-6 rounded-full bg-[#8BA888] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[#5F7D6A] active:scale-[0.98]"
+                className="mt-6 rounded-full bg-[#E1F9D8] px-5 py-3 text-[15px] font-semibold text-[#3A4E43] transition hover:bg-[#C0CFB2] active:scale-[0.98]"
               >
                 Back to welcome
               </button>
@@ -703,11 +703,11 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[#D1D5DB] bg-white p-6 text-center shadow-[0_8px_20px_rgba(28,25,23,0.04)] transition hover:-translate-y-0.5 hover:border-[#5F7D6A] hover:shadow-[0_12px_24px_rgba(95,125,106,0.12)] active:scale-[0.99]"
+              className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[#D1D5DB] bg-white p-6 text-center shadow-[0_8px_20px_rgba(28,25,23,0.04)] transition hover:-translate-y-0.5 hover:border-[#5F7D6A] hover:bg-[#FBFFF9] hover:shadow-[0_12px_24px_rgba(95,125,106,0.12)] active:scale-[0.99]"
             >
-              <div className="aspect-[3.375/2.125] w-full rounded-[24px] border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-6 py-6">
+              <div className="aspect-[3.375/2.125] w-full rounded-[24px] border border-dashed border-[#E5E7EB] bg-[#FBFFF9] px-6 py-6">
                 <div className="flex h-full flex-col items-center justify-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F3F4F6] text-[#1C1917]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E1F9D8] text-[#3A4E43]">
                     <PlusIcon />
                   </div>
                   <h2 className="mt-5 text-[22px] font-semibold text-[#1C1917]">
