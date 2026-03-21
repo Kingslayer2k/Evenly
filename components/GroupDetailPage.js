@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddExpenseModal from "./AddExpenseModal";
+import ExpenseDetail from "./ExpenseDetail";
 import PayerSwitchModal from "./PayerSwitchModal";
 import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
 import {
   createExpenseRecord,
+  deleteExpenseRecord,
   loadGroupDetailBundle,
   updateExpensePayerRecord,
 } from "../lib/groupData";
@@ -65,6 +67,7 @@ function ShareIcon() {
 export default function GroupDetailPage({ groupId }) {
   const router = useRouter();
   const toastTimeoutRef = useRef(null);
+  const refreshTimerRef = useRef(null);
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
   const [group, setGroup] = useState(null);
@@ -79,7 +82,9 @@ export default function GroupDetailPage({ groupId }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [toast, setToast] = useState("");
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState(null);
   const [expenseToReassign, setExpenseToReassign] = useState(null);
+  const [isDeletingExpense, setIsDeletingExpense] = useState(false);
 
   const showToast = useCallback((message) => {
     if (toastTimeoutRef.current) {
@@ -136,6 +141,19 @@ export default function GroupDetailPage({ groupId }) {
     [groupId],
   );
 
+  const scheduleRefresh = useCallback(
+    (currentUser) => {
+      if (!currentUser || typeof window === "undefined") return;
+      if (refreshTimerRef.current) return;
+
+      refreshTimerRef.current = window.setTimeout(() => {
+        refreshTimerRef.current = null;
+        void loadDetail(currentUser, { refresh: true });
+      }, 180);
+    },
+    [loadDetail],
+  );
+
   useEffect(() => {
     if (!supabase) {
       setIsLoading(false);
@@ -174,6 +192,9 @@ export default function GroupDetailPage({ groupId }) {
     return () => {
       isMounted = false;
       authListener.subscription.unsubscribe();
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+      }
       if (toastTimeoutRef.current) {
         window.clearTimeout(toastTimeoutRef.current);
       }
@@ -188,24 +209,24 @@ export default function GroupDetailPage({ groupId }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "groups", filter: `id=eq.${groupId}` },
-        () => void loadDetail(user, { refresh: true }),
+        () => scheduleRefresh(user),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "group_members", filter: `group_id=eq.${groupId}` },
-        () => void loadDetail(user, { refresh: true }),
+        () => scheduleRefresh(user),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "expenses", filter: `group_id=eq.${groupId}` },
-        () => void loadDetail(user, { refresh: true }),
+        () => scheduleRefresh(user),
       )
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [groupId, loadDetail, user]);
+  }, [groupId, scheduleRefresh, user]);
 
   const summary = useMemo(
     () => getUserSettlementSummary(members, expenses, membership),
@@ -268,6 +289,33 @@ export default function GroupDetailPage({ groupId }) {
           ok: false,
           message: error.message || "Could not update the payer.",
         };
+      }
+    },
+    [loadDetail, showToast, user],
+  );
+
+  const handleDeleteExpense = useCallback(
+    async (expense) => {
+      if (!supabase || !user) {
+        return { ok: false, message: "Sign in first so we can delete the expense." };
+      }
+
+      setIsDeletingExpense(true);
+
+      try {
+        await deleteExpenseRecord(supabase, expense.id);
+        setSelectedExpense(null);
+        await loadDetail(user, { refresh: true });
+        showToast("Expense deleted");
+        return { ok: true };
+      } catch (error) {
+        console.error(error);
+        return {
+          ok: false,
+          message: error.message || "Could not delete the expense.",
+        };
+      } finally {
+        setIsDeletingExpense(false);
       }
     },
     [loadDetail, showToast, user],
@@ -539,7 +587,19 @@ export default function GroupDetailPage({ groupId }) {
                     (Number(expense.amount_cents || 0) + Number(expense.round_up_cents || 0)) / 100;
 
                   return (
-                    <div key={expense.id} className="rounded-[22px] border border-[#E5E7EB] bg-[#FAFAF8] p-4">
+                    <div
+                      key={expense.id}
+                      onClick={() => setSelectedExpense(expense)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedExpense(expense);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      className="block w-full rounded-[22px] border border-[#E5E7EB] bg-[#FAFAF8] p-4 text-left transition hover:bg-[#F5F6F1] active:scale-[0.995]"
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="truncate text-[16px] font-semibold text-[#1C1917]">
@@ -556,7 +616,10 @@ export default function GroupDetailPage({ groupId }) {
                           </div>
                           <button
                             type="button"
-                            onClick={() => setExpenseToReassign(expense)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExpenseToReassign(expense);
+                            }}
                             className="mt-2 text-[13px] font-semibold text-[#5F7D6A] transition hover:text-[#3A4E43]"
                           >
                             Switch payer
@@ -599,6 +662,22 @@ export default function GroupDetailPage({ groupId }) {
           members={members}
           contexts={contexts}
           initialPayerId={membership?.id}
+        />
+      ) : null}
+
+      {selectedExpense ? (
+        <ExpenseDetail
+          isOpen={Boolean(selectedExpense)}
+          expense={selectedExpense}
+          members={members}
+          canDelete={membership?.role === "admin" || selectedExpense?.paid_by === membership?.id}
+          isDeleting={isDeletingExpense}
+          onClose={() => setSelectedExpense(null)}
+          onDelete={handleDeleteExpense}
+          onChangePayer={(expense) => {
+            setSelectedExpense(null);
+            setExpenseToReassign(expense);
+          }}
         />
       ) : null}
 

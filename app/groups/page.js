@@ -245,6 +245,7 @@ function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageC
 export default function GroupsPage() {
   const router = useRouter();
   const toastTimeoutRef = useRef(null);
+  const refreshTimerRef = useRef(null);
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
   const [groups, setGroups] = useState([]);
@@ -336,6 +337,19 @@ export default function GroupsPage() {
     [],
   );
 
+  const scheduleRefresh = useCallback(
+    (currentUser) => {
+      if (!currentUser || typeof window === "undefined") return;
+      if (refreshTimerRef.current) return;
+
+      refreshTimerRef.current = window.setTimeout(() => {
+        refreshTimerRef.current = null;
+        void loadGroupsData(currentUser, { refresh: true });
+      }, 180);
+    },
+    [loadGroupsData],
+  );
+
   useEffect(() => {
     setCardColors(readStoredCardColors());
     setCardImages(readStoredCardImages());
@@ -394,6 +408,9 @@ export default function GroupsPage() {
     return () => {
       isMounted = false;
       authListener.subscription.unsubscribe();
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+      }
       if (toastTimeoutRef.current) {
         window.clearTimeout(toastTimeoutRef.current);
       }
@@ -408,24 +425,24 @@ export default function GroupsPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "groups" },
-        () => void loadGroupsData(user, { refresh: true }),
+        () => scheduleRefresh(user),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "group_members" },
-        () => void loadGroupsData(user, { refresh: true }),
+        () => scheduleRefresh(user),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "expenses" },
-        () => void loadGroupsData(user, { refresh: true }),
+        () => scheduleRefresh(user),
       )
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [loadGroupsData, user]);
+  }, [scheduleRefresh, user]);
 
   useEffect(() => {
     if (!pendingInviteCode || !user) return;
@@ -498,9 +515,9 @@ export default function GroupsPage() {
         if (imageData) {
           persistCardImage(group.id, imageData);
         }
-        await updateGroupCardColor(supabase, group.id, color);
+        void updateGroupCardColor(supabase, group.id, color);
         if (imageData) {
-          await updateGroupCardImage(supabase, group.id, imageData);
+          void updateGroupCardImage(supabase, group.id, imageData);
         }
         await loadGroupsData(user, { refresh: true });
         showToast(`${name} is ready`);
@@ -570,7 +587,7 @@ export default function GroupsPage() {
   const handleCardColorChange = useCallback(
     async (group, nextColor) => {
       persistCardColor(group.id, nextColor);
-      await updateGroupCardColor(supabase, group.id, nextColor);
+      void updateGroupCardColor(supabase, group.id, nextColor);
       setPreviewState((previous) =>
         previous.group?.id === group.id
           ? {
@@ -590,7 +607,7 @@ export default function GroupsPage() {
   const handleCardImageChange = useCallback(
     async (group, imageData) => {
       persistCardImage(group.id, imageData);
-      await updateGroupCardImage(supabase, group.id, imageData);
+      void updateGroupCardImage(supabase, group.id, imageData);
       setPreviewState((previous) =>
         previous.group?.id === group.id
           ? {
