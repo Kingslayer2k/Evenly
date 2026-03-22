@@ -154,18 +154,18 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(58,78,67,0.4)]" onClick={resetAndClose}>
+    <div className="fixed inset-0 z-50 bg-[var(--overlay)]" onClick={resetAndClose}>
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 h-[85vh] rounded-t-[24px] bg-white transition duration-300 ease-out"
+        className="fixed inset-x-0 bottom-0 h-[85vh] rounded-t-[24px] border border-[var(--border)] bg-[var(--surface)] transition duration-300 ease-out"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex h-14 items-center justify-between border-b border-[#E5E7EB] px-5">
+        <div className="flex h-14 items-center justify-between border-b border-[var(--border)] px-5">
           {currentStep === 1 ? (
             <button
               type="button"
-              className="text-[16px] font-medium text-[#6B7280]"
+              className="text-[16px] font-medium text-[var(--text-muted)]"
               onClick={resetAndClose}
             >
               Cancel
@@ -179,7 +179,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
           {currentStep === 2 ? (
             <button
               type="button"
-              className="text-[16px] font-medium text-[#5F7D6A]"
+              className="text-[16px] font-medium text-[var(--accent)]"
               onClick={resetAndClose}
             >
               Done
@@ -192,12 +192,12 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
         {currentStep === 1 ? (
           <div className="flex h-[calc(85vh-56px)] flex-col">
             <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
-              <h2 className="text-[28px] font-bold text-[#1C1917]">New group</h2>
-              <p className="mt-2 text-[15px] font-normal text-[#6B7280]">
+              <h2 className="text-[28px] font-bold text-[var(--text)]">New group</h2>
+              <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">
                 Roomies, trip crew, weekend away.
               </p>
 
-              <label className="mt-8 block text-[13px] font-medium text-[#6B7280]">
+              <label className="mt-8 block text-[13px] font-medium text-[var(--text-muted)]">
                 Group name
               </label>
               <input
@@ -205,11 +205,11 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                 value={groupName}
                 onChange={(event) => setGroupName(event.target.value)}
                 placeholder="e.g., The Apartment"
-                className="mt-2 h-12 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 text-[16px] font-normal text-[#1C1917] placeholder:text-[#9CA3AF] outline-none focus:border-[#5F7D6A]"
+                className="mt-2 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] font-normal text-[var(--text)] placeholder:text-[var(--text-soft)] outline-none focus:border-[var(--accent)]"
               />
 
               <div className="mt-6">
-                <div className="text-[13px] font-medium text-[#6B7280]">Card color</div>
+                <div className="text-[13px] font-medium text-[var(--text-muted)]">Card color</div>
 
                 <div className="mt-3 flex flex-wrap gap-3">
                   {PRESET_COLORS.map((color) => {
@@ -221,8 +221,8 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                         onClick={() => setSelectedColor(color)}
                         className={`h-10 w-10 rounded-full border-2 transition active:scale-95 ${
                           isSelected
-                            ? "border-[#5F7D6A] shadow-[0_0_0_4px_rgba(95,125,106,0.16)]"
-                            : "border-white shadow-[0_4px_10px_rgba(28,25,23,0.08)]"
+                            ? "border-[var(--accent)] shadow-[0_0_0_4px_rgba(95,125,106,0.16)]"
+                            : "border-[var(--surface)] shadow-[0_4px_10px_rgba(28,25,23,0.08)]"
                         }`}
                         style={{ backgroundColor: color }}
                         aria-label={`Select ${color} as the card color`}
@@ -233,7 +233,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                   <button
                     type="button"
                     onClick={() => colorInputRef.current?.click()}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-[#F3F4F6] text-[#1C1917] transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-95"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white active:scale-95"
                     aria-label="Open custom color picker"
                   >
                     <FourSquaresIcon />
@@ -242,7 +242,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                   <button
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
-                    className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D1D5DB] bg-[#F3F4F6] px-4 text-[13px] font-semibold text-[#1C1917] transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-95"
+                    className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-4 text-[13px] font-semibold text-[var(--text)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white active:scale-95"
                     aria-label="Add an image background"
                   >
                     <ImagePlusIcon />
@@ -311,17 +311,17 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
               </div>
 
               {error ? (
-                <p className="mt-4 text-[13px] font-medium text-[#DC2626]">{error}</p>
+                <p className="mt-4 text-[13px] font-medium text-[var(--danger)]">{error}</p>
               ) : null}
             </div>
 
-            <div className="mt-auto border-t border-[#E5E7EB] bg-white px-6 py-4">
+            <div className="mt-auto border-t border-[var(--border)] bg-[var(--surface)] px-6 py-4">
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => void handleCreate()}
                   disabled={!groupName.trim() || isSubmitting}
-                  className="rounded-xl bg-[#5F7D6A] px-8 py-3 text-[16px] font-medium text-white transition duration-200 ease-out hover:bg-[#3A4E43] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+                  className="rounded-xl bg-[var(--accent)] px-8 py-3 text-[16px] font-medium text-white transition duration-200 ease-out hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-soft)]"
                 >
                   {isSubmitting ? "Creating..." : "Create"}
                 </button>
@@ -332,36 +332,36 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
           <div className="h-[calc(85vh-56px)] overflow-y-auto px-6 pt-6 pb-8">
             <div className="text-center">
               <div className="text-[48px] leading-none">✓</div>
-              <h2 className="mt-4 text-[28px] font-bold text-[#1C1917]">Group created!</h2>
-              <p className="mt-2 text-[15px] font-normal text-[#6B7280]">
+              <h2 className="mt-4 text-[28px] font-bold text-[var(--text)]">Group created!</h2>
+              <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">
                 Share this code with your friends
               </p>
             </div>
 
-            <div className="mt-8 rounded-xl border-2 border-[#E5E7EB] bg-[#F7F7F5] p-5 text-center">
-              <div className="font-mono text-[36px] font-bold tracking-[6px] text-[#1C1917]">
+            <div className="mt-8 rounded-xl border-2 border-[var(--border)] bg-[var(--surface-muted)] p-5 text-center">
+              <div className="font-mono text-[36px] font-bold tracking-[6px] text-[var(--text)]">
                 {generatedCode}
               </div>
               <button
                 type="button"
                 onClick={() => void handleCopyCode()}
-                className="mt-4 rounded-lg border border-[#5F7D6A] px-5 py-2 text-[14px] font-medium text-[#5F7D6A] transition hover:bg-[#F3F4F6]"
+                className="mt-4 rounded-lg border border-[var(--accent)] px-5 py-2 text-[14px] font-medium text-[var(--accent)] transition hover:bg-[var(--surface-soft)]"
               >
                 {copied ? "Copied!" : "Copy code"}
               </button>
             </div>
 
-            <div className="my-6 text-center text-[13px] font-normal text-[#9CA3AF]">or</div>
+            <div className="my-6 text-center text-[13px] font-normal text-[var(--text-soft)]">or</div>
 
             <div>
-              <div className="text-[13px] font-medium text-[#6B7280]">Share invite link</div>
-              <div className="mt-2 rounded-lg bg-[#F3F4F6] px-4 py-3 font-mono text-[14px] font-normal text-[#5F7D6A]">
+              <div className="text-[13px] font-medium text-[var(--text-muted)]">Share invite link</div>
+              <div className="mt-2 rounded-lg bg-[var(--surface-muted)] px-4 py-3 font-mono text-[14px] font-normal text-[var(--accent)]">
                 {inviteLink || "Use the code above inside Evenly"}
               </div>
               <button
                 type="button"
                 onClick={() => void handleShareLink()}
-                className="mt-3 rounded-lg border border-[#6B7280] px-5 py-2 text-[14px] font-medium text-[#6B7280] transition hover:bg-[#F7F7F5]"
+                className="mt-3 rounded-lg border border-[var(--border)] px-5 py-2 text-[14px] font-medium text-[var(--text-muted)] transition hover:bg-[var(--surface-soft)]"
               >
                 {sharing ? "Sharing..." : "Share"}
               </button>

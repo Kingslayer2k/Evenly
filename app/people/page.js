@@ -10,12 +10,6 @@ import { createContactRecord } from "../../lib/groupData";
 import { supabase } from "../../lib/supabase";
 import { pageTransition } from "../../lib/animations";
 
-/*
-visual thesis: editorial contact ledger with calm white space, sharp type, and relationship cards that feel precise rather than dashboard-y.
-content plan: header orientation, searchable people list, balance-first cards, then an empty state that points back to the shared-group workflow.
-interaction thesis: page slides in gently, people cards reveal with short stagger, and balance figures count up to make scanning feel alive without breaking restraint.
-*/
-
 function SearchIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -31,7 +25,7 @@ function PeopleSkeleton() {
       {[0, 1, 2].map((item) => (
         <div
           key={item}
-          className="h-[184px] rounded-[16px] border border-[#E5E7EB] bg-[linear-gradient(90deg,#F3F4F6_0%,#E5E7EB_50%,#F3F4F6_100%)] bg-[length:200%_100%] animate-[shimmer_1.8s_linear_infinite]"
+          className="h-[184px] rounded-[16px] border border-[var(--border)] bg-[linear-gradient(90deg,var(--surface-muted)_0%,var(--border)_50%,var(--surface-muted)_100%)] bg-[length:200%_100%] animate-[shimmer_1.8s_linear_infinite]"
         />
       ))}
     </div>
@@ -42,6 +36,7 @@ export default function PeoplePage() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [query, setQuery] = useState("");
   const [isAddPersonOpen, setIsAddPersonOpen] = useState(false);
   const { people, isLoading, error } = usePersonBalances(user);
@@ -55,12 +50,14 @@ export default function PeoplePage() {
       const { data } = await supabase.auth.getSession();
       if (!isMounted) return;
       setUser(data.session?.user || null);
+      setAuthReady(true);
     }
 
     void bootstrapAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
+      setAuthReady(true);
     });
 
     return () => {
@@ -83,25 +80,25 @@ export default function PeoplePage() {
 
   return (
     <motion.main
-      className="min-h-screen bg-[#F7F7F5]"
+      className="min-h-screen bg-[var(--bg)]"
       initial={reduceMotion ? false : pageTransition.initial}
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
     >
-      <header className="sticky top-0 z-20 border-b border-[#E5E7EB] bg-white/95 px-6 pt-5 pb-4 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-6 pt-5 pb-4 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-[460px]">
-          <h1 className="text-[32px] font-bold tracking-[-0.05em] text-[#1C1917]">People</h1>
-          <p className="mt-1 text-[14px] text-[#6B7280]">Track who you split with</p>
+          <h1 className="text-[32px] font-bold tracking-[-0.05em] text-[var(--text)]">People</h1>
+          <p className="mt-1 text-[14px] text-[var(--text-muted)]">Track who you split with</p>
 
-          <div className="mt-4 flex h-11 items-center rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] px-4">
+          <div className="mt-4 flex h-11 items-center rounded-[12px] border border-[var(--border)] bg-[var(--surface-muted)] px-4">
             <input
               type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search people..."
-              className="w-full bg-transparent text-[15px] text-[#1C1917] outline-none placeholder:text-[#9CA3AF]"
+              className="w-full bg-transparent text-[15px] text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
             />
-            <div className="text-[#9CA3AF]">
+            <div className="text-[var(--text-soft)]">
               <SearchIcon />
             </div>
           </div>
@@ -109,19 +106,19 @@ export default function PeoplePage() {
       </header>
 
       <div className="mx-auto w-full max-w-[460px] pt-4 pb-28">
-        {isLoading ? <PeopleSkeleton /> : null}
+        {isLoading || !authReady ? <PeopleSkeleton /> : null}
 
-        {!isLoading && !user ? (
+        {!isLoading && authReady && !user ? (
           <div className="px-6">
-            <div className="rounded-[20px] border border-[#E5E7EB] bg-white px-5 py-6">
-              <div className="text-[20px] font-semibold tracking-[-0.03em] text-[#1C1917]">Sign in first</div>
-              <p className="mt-2 text-[14px] leading-6 text-[#6B7280]">
+            <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface)] px-5 py-6">
+              <div className="text-[20px] font-semibold tracking-[-0.03em] text-[var(--text)]">Sign in first</div>
+              <p className="mt-2 text-[14px] leading-6 text-[var(--text-muted)]">
                 Jump back to the welcome screen, sign in, and your people ledger will appear here.
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/")}
-                className="mt-5 rounded-full bg-[#5F7D6A] px-5 py-3 text-[15px] font-medium text-white transition hover:bg-[#3A4E43]"
+                className="mt-5 rounded-full bg-[var(--accent)] px-5 py-3 text-[15px] font-medium text-white transition hover:opacity-90"
               >
                 Go to welcome
               </button>
@@ -129,28 +126,28 @@ export default function PeoplePage() {
           </div>
         ) : null}
 
-        {!isLoading && user && error ? (
+        {!isLoading && authReady && user && error ? (
           <div className="px-6">
-            <div className="rounded-[20px] border border-[#E5E7EB] bg-white px-5 py-4 text-[14px] font-medium text-[#DC2626]">
+            <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface)] px-5 py-4 text-[14px] font-medium text-[var(--danger)]">
               {error}
             </div>
           </div>
         ) : null}
 
-        {!isLoading && user && !error && !filteredPeople.length ? (
+        {!isLoading && authReady && user && !error && !filteredPeople.length ? (
           <div className="px-6">
-            <div className="rounded-[20px] border border-[#E5E7EB] bg-white px-5 py-8 text-center">
+            <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center">
               <div className="text-[44px]">👥</div>
-              <div className="mt-3 text-[20px] font-semibold tracking-[-0.03em] text-[#1C1917]">
+              <div className="mt-3 text-[20px] font-semibold tracking-[-0.03em] text-[var(--text)]">
                 No people yet
               </div>
-              <p className="mt-2 text-[14px] leading-6 text-[#6B7280]">
+              <p className="mt-2 text-[14px] leading-6 text-[var(--text-muted)]">
                 Add expenses inside your groups and the people you split with will show up here automatically.
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/groups")}
-                className="mt-5 rounded-full bg-[#E1F9D8] px-5 py-3 text-[15px] font-medium text-[#3A4E43] transition hover:bg-[#CFEEC1]"
+                className="mt-5 rounded-full bg-[var(--surface-accent)] px-5 py-3 text-[15px] font-medium text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft-hover)]"
               >
                 Go to groups
               </button>
@@ -158,7 +155,7 @@ export default function PeoplePage() {
           </div>
         ) : null}
 
-        {!isLoading && user && !error && filteredPeople.length ? (
+        {!isLoading && authReady && user && !error && filteredPeople.length ? (
           <div className="space-y-3 px-6">
             {filteredPeople.map((person, index) => (
               <PersonCard
@@ -176,7 +173,7 @@ export default function PeoplePage() {
         <button
           type="button"
           onClick={() => setIsAddPersonOpen(true)}
-          className="fixed right-6 bottom-[92px] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#5F7D6A] text-[28px] text-white shadow-[0_4px_12px_rgba(95,125,106,0.3)] transition hover:bg-[#3A4E43] active:scale-[0.97]"
+          className="fixed right-6 bottom-[92px] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent)] text-[28px] text-white shadow-[0_4px_12px_rgba(95,125,106,0.3)] transition hover:opacity-90 active:scale-[0.97]"
           aria-label="Add person"
         >
           +

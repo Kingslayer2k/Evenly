@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddExpenseModal from "./AddExpenseModal";
+import DeleteGroupDialog from "./DeleteGroupDialog";
 import ExpenseDetail from "./ExpenseDetail";
 import PaymentModal from "./PaymentModal";
 import PayerSwitchModal from "./PayerSwitchModal";
@@ -13,6 +14,7 @@ import {
   loadUserContacts,
   createSettlementRecord,
   createExpenseRecord,
+  deleteGroupRecord,
   deleteExpenseRecord,
   loadGroupDetailBundle,
   updateExpensePayerRecord,
@@ -23,6 +25,7 @@ import {
   formatExpenseDate,
   formatSignedCurrency,
   getDisplayNameFromUser,
+  getExpenseEmoji,
   getExpenseTitle,
   getMemberPreview,
   getStableCardColor,
@@ -91,6 +94,8 @@ export default function GroupDetailPage({ groupId }) {
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [expenseToReassign, setExpenseToReassign] = useState(null);
   const [isDeletingExpense, setIsDeletingExpense] = useState(false);
+  const [isDeleteGroupOpen, setIsDeleteGroupOpen] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [paymentFlow, setPaymentFlow] = useState(null);
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
 
@@ -261,7 +266,18 @@ export default function GroupDetailPage({ groupId }) {
   );
 
   const handleCreateExpense = useCallback(
-    async ({ title, amountCents, paidBy, participants, splitType, shares, contextId, contextName }) => {
+    async ({
+      title,
+      amountCents,
+      paidBy,
+      participants,
+      splitType,
+      shares,
+      contactParticipants,
+      contactShares,
+      contextId,
+      contextName,
+    }) => {
       if (!supabase || !user) {
         return { ok: false, message: "Sign in first so we can save the expense." };
       }
@@ -275,6 +291,8 @@ export default function GroupDetailPage({ groupId }) {
           participants,
           splitType,
           shares,
+          contactParticipants,
+          contactShares,
           contextId,
           contextName,
         });
@@ -314,6 +332,23 @@ export default function GroupDetailPage({ groupId }) {
     },
     [loadDetail, showToast, user],
   );
+
+  const handleDeleteGroup = useCallback(async () => {
+    if (!supabase || !group?.id) return;
+
+    setIsDeletingGroup(true);
+
+    try {
+      await deleteGroupRecord(supabase, group.id);
+      router.replace("/groups");
+    } catch (error) {
+      console.error(error);
+      setIsDeleteGroupOpen(false);
+      showToast(error.message || "Could not delete the group yet");
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  }, [group?.id, router, showToast]);
 
   const handleDeleteExpense = useCallback(
     async (expense) => {
@@ -422,23 +457,23 @@ export default function GroupDetailPage({ groupId }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F7F5]">
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-[#E5E7EB] bg-white/95 px-5 py-4 backdrop-blur-sm">
+    <main className="min-h-screen bg-[var(--bg)]">
+      <header className="fixed inset-x-0 top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-5 py-4 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[460px] items-center justify-between">
           <button
             type="button"
             onClick={() => router.push("/groups")}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6] text-[#1C1917] transition hover:bg-[#E5E7EB] active:scale-[0.98]"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text)] transition hover:opacity-90 active:scale-[0.98]"
             aria-label="Back to groups"
           >
             <BackIcon />
           </button>
 
           <div className="text-center">
-            <div className="text-[22px] font-bold tracking-[-0.04em] text-[#1C1917]">
+            <div className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">
               {group?.name || "Group"}
             </div>
-            <div className="mt-1 text-[14px] text-[#6B7280]">
+            <div className="mt-1 text-[14px] text-[var(--text-muted)]">
               {isRefreshing ? "Refreshing..." : "Live group detail"}
             </div>
           </div>
@@ -446,7 +481,7 @@ export default function GroupDetailPage({ groupId }) {
           <button
             type="button"
             onClick={() => setIsExpenseModalOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5F7D6A] text-white transition hover:bg-[#3A4E43] active:scale-[0.98]"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-white transition hover:opacity-90 active:scale-[0.98]"
             aria-label="Add expense"
           >
             <PlusIcon />
@@ -464,29 +499,29 @@ export default function GroupDetailPage({ groupId }) {
             </div>
           </div>
         ) : !user ? (
-          <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-            <h2 className="text-[24px] font-bold text-[#1C1917]">Sign in first</h2>
-            <p className="mt-3 text-[15px] leading-6 text-[#6B7280]">
+          <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+            <h2 className="text-[24px] font-bold text-[var(--text)]">Sign in first</h2>
+            <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
               Log in on the welcome screen and then come back into the group.
             </p>
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="mt-6 rounded-full bg-[#8BA888] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[#5F7D6A]"
+              className="mt-6 rounded-full bg-[var(--accent)] px-5 py-3 text-[15px] font-semibold text-white transition hover:opacity-90"
             >
               Go to welcome
             </button>
           </div>
         ) : !group || !membership ? (
-          <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-            <h2 className="text-[24px] font-bold text-[#1C1917]">Group not available</h2>
-            <p className="mt-3 text-[15px] leading-6 text-[#6B7280]">
+          <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+            <h2 className="text-[24px] font-bold text-[var(--text)]">Group not available</h2>
+            <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
               You may not be in this group yet, or the invite has changed.
             </p>
             <button
               type="button"
               onClick={() => router.push("/groups")}
-              className="mt-6 rounded-full bg-[#5F7D6A] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[#3A4E43]"
+              className="mt-6 rounded-full bg-[var(--accent)] px-5 py-3 text-[15px] font-semibold text-white transition hover:opacity-90"
             >
               Back to groups
             </button>
@@ -563,32 +598,41 @@ export default function GroupDetailPage({ groupId }) {
                     <ShareIcon />
                     Share invite
                   </button>
+                  {membership?.role === "admin" ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteGroupOpen(true)}
+                      className="rounded-full border border-white/45 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-white/10"
+                    >
+                      Delete group
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </section>
 
             <section className="mt-5 grid grid-cols-3 gap-3">
-              <div className="rounded-[24px] bg-white p-4 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-                <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+              <div className="rounded-[24px] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+                <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                   Members
                 </div>
-                <div className="mt-2 text-[26px] font-bold tracking-[-0.04em] text-[#1C1917]">
+                <div className="mt-2 text-[26px] font-bold tracking-[-0.04em] text-[var(--text)]">
                   {members.length}
                 </div>
               </div>
-              <div className="rounded-[24px] bg-white p-4 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-                <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+              <div className="rounded-[24px] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+                <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                   Expenses
                 </div>
-                <div className="mt-2 text-[26px] font-bold tracking-[-0.04em] text-[#1C1917]">
+                <div className="mt-2 text-[26px] font-bold tracking-[-0.04em] text-[var(--text)]">
                   {expenses.length}
                 </div>
               </div>
-              <div className="rounded-[24px] bg-white p-4 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-                <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+              <div className="rounded-[24px] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+                <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                   You
                 </div>
-                <div className="mt-2 truncate text-[18px] font-bold tracking-[-0.03em] text-[#1C1917]">
+                <div className="mt-2 truncate text-[18px] font-bold tracking-[-0.03em] text-[var(--text)]">
                   {displayName}
                 </div>
               </div>
@@ -596,11 +640,11 @@ export default function GroupDetailPage({ groupId }) {
 
             <SettlementCard summary={summary} onAction={handleOpenSettlement} />
 
-            <section className="mt-6 rounded-[28px] bg-white p-5 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
+            <section className="mt-6 rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[#1C1917]">Recent expenses</h2>
-                  <p className="mt-1 text-[14px] text-[#6B7280]">
+                  <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Recent expenses</h2>
+                  <p className="mt-1 text-[14px] text-[var(--text-muted)]">
                     Tap in new charges and switch the payer if the wrong person grabbed it.
                   </p>
                 </div>
@@ -608,7 +652,7 @@ export default function GroupDetailPage({ groupId }) {
                 <button
                   type="button"
                   onClick={() => setIsExpenseModalOpen(true)}
-                  className="rounded-full bg-[#5F7D6A] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#3A4E43]"
+                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-[14px] font-semibold text-white transition hover:opacity-90"
                 >
                   Add
                 </button>
@@ -633,20 +677,27 @@ export default function GroupDetailPage({ groupId }) {
                       }}
                       role="button"
                       tabIndex={0}
-                      className="block w-full rounded-[22px] border border-[#E5E7EB] bg-[#FAFAF8] p-4 text-left transition hover:bg-[#F5F6F1] active:scale-[0.995]"
+                      className="block w-full rounded-[22px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 text-left transition hover:opacity-95 active:scale-[0.995]"
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="truncate text-[16px] font-semibold text-[#1C1917]">
-                            {getExpenseTitle(expense)}
-                          </div>
-                          <div className="mt-1 text-[13px] text-[#6B7280]">
-                            Paid by {payer?.display_name || "Someone"} • {participantCount || members.length} people • {formatExpenseDate(expense.created_at)}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--surface-accent)] text-[18px]">
+                              {getExpenseEmoji(expense)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate text-[16px] font-semibold text-[var(--text)]">
+                                {getExpenseTitle(expense)}
+                              </div>
+                              <div className="mt-1 text-[13px] text-[var(--text-muted)]">
+                                Paid by {payer?.display_name || "Someone"} • {participantCount || members.length} people • {formatExpenseDate(expense.created_at)}
+                              </div>
+                            </div>
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <div className="text-[18px] font-bold tracking-[-0.03em] text-[#1C1917]">
+                          <div className="text-[18px] font-bold tracking-[-0.03em] text-[var(--text)]">
                             {formatCurrency(totalAmount)}
                           </div>
                           <button
@@ -655,7 +706,7 @@ export default function GroupDetailPage({ groupId }) {
                               event.stopPropagation();
                               setExpenseToReassign(expense);
                             }}
-                            className="mt-2 text-[13px] font-semibold text-[#5F7D6A] transition hover:text-[#3A4E43]"
+                            className="mt-2 text-[13px] font-semibold text-[var(--accent)] transition hover:opacity-80"
                           >
                             Switch payer
                           </button>
@@ -666,7 +717,7 @@ export default function GroupDetailPage({ groupId }) {
                 })}
 
                 {!expenses.length ? (
-                  <div className="rounded-2xl bg-[#F7F7F5] px-4 py-4 text-[14px] text-[#6B7280]">
+                  <div className="rounded-2xl bg-[var(--surface-muted)] px-4 py-4 text-[14px] text-[var(--text-muted)]">
                     No expenses yet. Add the first one and the live balances will kick in.
                   </div>
                 ) : null}
@@ -676,7 +727,7 @@ export default function GroupDetailPage({ groupId }) {
         )}
 
         {errorMessage ? (
-          <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-[14px] font-medium text-[#DC2626]">
+          <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[14px] font-medium text-[var(--danger)]">
             {errorMessage}
           </div>
         ) : null}
@@ -740,6 +791,14 @@ export default function GroupDetailPage({ groupId }) {
           onConfirmSettlement={handleConfirmSettlement}
         />
       ) : null}
+
+      <DeleteGroupDialog
+        isOpen={isDeleteGroupOpen}
+        groupName={group?.name || "This group"}
+        isDeleting={isDeletingGroup}
+        onCancel={() => setIsDeleteGroupOpen(false)}
+        onConfirm={handleDeleteGroup}
+      />
     </main>
   );
 }

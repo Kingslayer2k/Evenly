@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from "react";
 import DeleteExpenseDialog from "./DeleteExpenseDialog";
-import { computeExpenseShares, formatCurrency, formatExpenseDate, getExpenseTitle } from "../lib/utils";
+import {
+  computeExpenseShares,
+  formatCurrency,
+  formatExpenseDate,
+  getExpenseEmoji,
+  getExpenseTitle,
+} from "../lib/utils";
 
 const AVATAR_COLORS = ["#8BA888", "#5F7D6A", "#D4A574", "#89CFF0"];
 
@@ -40,7 +46,7 @@ function getInitials(name) {
 
 function MemberChip({ member, amountLabel, index }) {
   return (
-    <div className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[rgba(95,125,106,0.1)] px-3 py-1.5 text-[14px] font-medium text-[#1C1917]">
+    <div className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--surface-accent)] px-3 py-1.5 text-[14px] font-medium text-[var(--text)]">
       <div
         className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold text-white"
         style={{ backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }}
@@ -48,7 +54,7 @@ function MemberChip({ member, amountLabel, index }) {
         {getInitials(member.display_name)}
       </div>
       <span>{member.display_name}</span>
-      {amountLabel ? <span className="text-[#6B7280]">{amountLabel}</span> : null}
+      {amountLabel ? <span className="text-[var(--text-muted)]">{amountLabel}</span> : null}
     </div>
   );
 }
@@ -88,32 +94,37 @@ export default function ExpenseDetail({
 
   return (
     <>
-      <div className="fixed inset-0 z-[60] bg-[rgba(28,25,23,0.38)]" onClick={onClose}>
+      <div className="fixed inset-0 z-[60] bg-[var(--overlay)]" onClick={onClose}>
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="expense-detail-title"
-          className="fixed inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-[28px] bg-white px-6 pt-6 pb-8 shadow-[0_-18px_44px_rgba(28,25,23,0.14)]"
+          className="fixed inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-8 shadow-[0_-18px_44px_rgba(28,25,23,0.14)]"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[#E5E7EB]" />
+          <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[var(--border)]" />
 
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 id="expense-detail-title" className="truncate text-[28px] font-bold tracking-[-0.04em] text-[#1C1917]">
-                {getExpenseTitle(expense)}
-              </h2>
-              <p className="mt-2 text-[14px] text-[#6B7280]">{formatExpenseDate(expense.created_at)}</p>
+            <div className="min-w-0 flex items-start gap-3">
+              <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--surface-accent)] text-[22px]">
+                {getExpenseEmoji(expense)}
+              </div>
+              <div className="min-w-0">
+                <h2 id="expense-detail-title" className="truncate text-[28px] font-bold tracking-[-0.04em] text-[var(--text)]">
+                  {getExpenseTitle(expense)}
+                </h2>
+                <p className="mt-2 text-[14px] text-[var(--text-muted)]">{formatExpenseDate(expense.created_at)}</p>
+              </div>
             </div>
 
             <div className="shrink-0 text-right">
-              <div className="text-[28px] font-bold tracking-[-0.04em] text-[#1C1917]">
+              <div className="text-[28px] font-bold tracking-[-0.04em] text-[var(--text)]">
                 {formatCurrency(totalAmount)}
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-3 ml-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6] text-[#1C1917] transition hover:bg-[#E5E7EB]"
+                className="mt-3 ml-auto flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text)] transition hover:opacity-90"
                 aria-label="Close expense details"
               >
                 <CloseIcon />
@@ -121,9 +132,9 @@ export default function ExpenseDetail({
             </div>
           </div>
 
-          <div className="mt-7 rounded-[24px] bg-[#F7F7F5] p-5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">Paid by</div>
-            <div className="mt-3 inline-flex items-center gap-3 rounded-full bg-white px-4 py-3 text-[15px] font-medium text-[#1C1917] shadow-[0_4px_12px_rgba(28,25,23,0.04)]">
+          <div className="mt-7 rounded-[24px] bg-[var(--surface-muted)] p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Paid by</div>
+            <div className="mt-3 inline-flex items-center gap-3 rounded-full bg-[var(--surface)] px-4 py-3 text-[15px] font-medium text-[var(--text)] shadow-[0_4px_12px_rgba(28,25,23,0.04)]">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-semibold text-white"
                 style={{ backgroundColor: AVATAR_COLORS[1] }}
@@ -133,7 +144,7 @@ export default function ExpenseDetail({
               <span>{payer?.display_name || "Someone"}</span>
             </div>
 
-            <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+            <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
               Split with
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -147,7 +158,7 @@ export default function ExpenseDetail({
               ))}
             </div>
 
-            <p className="mt-4 text-[16px] font-semibold text-[#6B7280]">
+            <p className="mt-4 text-[16px] font-semibold text-[var(--text-muted)]">
               {isEqualSplit ? `${formatCurrency(equalAmount)} each` : "Custom split"}
             </p>
           </div>
@@ -156,7 +167,7 @@ export default function ExpenseDetail({
             <button
               type="button"
               onClick={() => onChangePayer?.(expense)}
-              className="min-h-11 rounded-[10px] border border-[#E5E7EB] bg-white px-4 text-[15px] font-medium text-[#1C1917] transition hover:bg-[#F7F7F5] active:scale-[0.99]"
+              className="min-h-11 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)] active:scale-[0.99]"
             >
               Change who paid
             </button>
@@ -165,7 +176,7 @@ export default function ExpenseDetail({
               <button
                 type="button"
                 onClick={() => setShowDeleteDialog(true)}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[#DC2626] bg-transparent px-4 text-[15px] font-medium text-[#DC2626] transition hover:bg-[rgba(220,38,38,0.05)] active:bg-[rgba(220,38,38,0.1)]"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--danger)] bg-transparent px-4 text-[15px] font-medium text-[var(--danger)] transition hover:bg-[color:rgba(220,38,38,0.08)] active:bg-[color:rgba(220,38,38,0.14)]"
               >
                 <TrashIcon />
                 Delete expense

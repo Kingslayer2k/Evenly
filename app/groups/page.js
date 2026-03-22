@@ -42,7 +42,7 @@ function IconButton({ children, onClick, label, spinning = false }) {
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6] text-[#1C1917] transition hover:bg-[#E5E7EB] active:scale-[0.98]"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
     >
       <div className={spinning ? "animate-spin" : ""}>{children}</div>
     </button>
@@ -640,12 +640,12 @@ export default function GroupsPage() {
 
   return (
     <motion.main
-      className="min-h-screen bg-[#F7F7F5]"
+      className="min-h-screen bg-[var(--bg)]"
       initial={reduceMotion ? false : pageTransition.initial}
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
     >
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-[#E5E7EB] bg-white/95 px-5 py-4 backdrop-blur-sm">
+      <header className="fixed inset-x-0 top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-5 py-4 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[420px] items-center justify-between">
           <IconButton label="Open settings" onClick={() => setIsSettingsOpen(true)}>
             <HamburgerIcon />
@@ -653,12 +653,12 @@ export default function GroupsPage() {
 
           <div className="text-center">
             <div
-              className="text-[30px] font-semibold leading-none tracking-[-0.04em] text-[#3A4E43]"
+              className="text-[30px] font-semibold leading-none tracking-[-0.04em] text-[var(--accent-strong)]"
               style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
             >
               Evenly
             </div>
-            <div className="mt-1 text-[15px] font-normal text-[#6B7280]">Your groups</div>
+            <div className="mt-1 text-[15px] font-normal text-[var(--text-muted)]">Your groups</div>
           </div>
 
           <IconButton label="Refresh groups" onClick={() => void handleRefresh()} spinning={isRefreshing}>
@@ -673,7 +673,7 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#5F7D6A] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#3A4E43] active:scale-[0.98]"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
             >
               <PlusIcon />
               <span>Create group</span>
@@ -682,7 +682,7 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsJoinOpen(true)}
-              className="inline-flex items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-4 py-3 text-[15px] font-semibold text-[#1C1917] transition hover:bg-[#F7F7F5] active:scale-[0.98]"
+              className="inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
             >
               Join by code
             </button>
@@ -691,9 +691,9 @@ export default function GroupsPage() {
 
         {!supabase ? (
           <section className="pt-10">
-            <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-              <h2 className="text-[24px] font-bold text-[#1C1917]">Connect Supabase first</h2>
-              <p className="mt-3 text-[15px] leading-6 text-[#6B7280]">
+            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+              <h2 className="text-[24px] font-bold text-[var(--text)]">Connect Supabase first</h2>
+              <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
                 Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`
                 or Vercel, then reload this page.
               </p>
@@ -702,22 +702,22 @@ export default function GroupsPage() {
         ) : isLoading ? (
           <section className="pt-8">
             <div className="mx-auto w-[88%] max-w-[360px]">
-              <div className="aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[#E5E7EB] bg-white" />
-              <div className="-mt-[194px] ml-0 aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[#E5E7EB] bg-[#F3F4F6]" />
-              <div className="-mt-[194px] ml-0 aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[#E5E7EB] bg-[#ECEDE8]" />
+              <div className="aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface)]" />
+              <div className="-mt-[194px] ml-0 aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface-muted)]" />
+              <div className="-mt-[194px] ml-0 aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface-soft)]" />
             </div>
           </section>
         ) : !user ? (
           <section className="pt-10">
-            <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_20px_rgba(28,25,23,0.04)]">
-              <h2 className="text-[24px] font-bold text-[#1C1917]">Sign in to see your groups</h2>
-              <p className="mt-3 text-[15px] leading-6 text-[#6B7280]">
+            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+              <h2 className="text-[24px] font-bold text-[var(--text)]">Sign in to see your groups</h2>
+              <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
                 Log in on the welcome screen, then come right back here.
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/")}
-                className="mt-6 rounded-full bg-[#E1F9D8] px-5 py-3 text-[15px] font-semibold text-[#3A4E43] transition hover:bg-[#C0CFB2] active:scale-[0.98]"
+                className="mt-6 rounded-full bg-[var(--surface-accent)] px-5 py-3 text-[15px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft-hover)] active:scale-[0.98]"
               >
                 Back to welcome
               </button>
@@ -728,17 +728,17 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[#D1D5DB] bg-white p-6 text-center shadow-[0_8px_20px_rgba(28,25,23,0.04)] transition hover:-translate-y-0.5 hover:border-[#5F7D6A] hover:bg-[#FBFFF9] hover:shadow-[0_12px_24px_rgba(95,125,106,0.12)] active:scale-[0.99]"
+              className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
             >
-              <div className="aspect-[3.375/2.125] w-full rounded-[24px] border border-dashed border-[#E5E7EB] bg-[#FBFFF9] px-6 py-6">
+              <div className="aspect-[3.375/2.125] w-full rounded-[24px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-6 py-6">
                 <div className="flex h-full flex-col items-center justify-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E1F9D8] text-[#3A4E43]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent-strong)]">
                     <PlusIcon />
                   </div>
-                  <h2 className="mt-5 text-[22px] font-semibold text-[#1C1917]">
+                  <h2 className="mt-5 text-[22px] font-semibold text-[var(--text)]">
                     Create your first group
                   </h2>
-                  <p className="mt-2 max-w-[230px] text-[14px] leading-5 text-[#6B7280]">
+                  <p className="mt-2 max-w-[230px] text-[14px] leading-5 text-[var(--text-muted)]">
                     Start with roommates, a trip, or your weekend crew.
                   </p>
                 </div>
@@ -749,7 +749,7 @@ export default function GroupsPage() {
               <button
               type="button"
               onClick={() => setIsJoinOpen(true)}
-                className="text-[15px] font-semibold text-[#5F7D6A] transition hover:text-[#3A4E43]"
+                className="text-[15px] font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
               >
                 Join with a code instead
               </button>
@@ -782,25 +782,25 @@ export default function GroupsPage() {
             </div>
 
             <div className="mt-6 text-center">
-              <div className="text-[14px] text-[#6B7280]">
+              <div className="text-[14px] text-[var(--text-muted)]">
                 Hi {profileName || getDisplayNameFromUser(user, "")}.
               </div>
-              <div className="mt-2 text-[13px] text-[#9CA3AF]">
-                Tap a card to open it. Press and hold to peek. Tap <span className="font-semibold text-[#6B7280]">Color</span> to change the top card.
+              <div className="mt-2 text-[13px] text-[var(--text-soft)]">
+                Tap a card to open it. Press and hold to peek. Tap <span className="font-semibold text-[var(--text-muted)]">Color</span> to change the top card.
               </div>
             </div>
           </section>
         )}
 
         {errorMessage ? (
-          <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-[14px] font-medium text-[#DC2626]">
+          <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[14px] font-medium text-[var(--danger)]">
             {errorMessage}
           </div>
         ) : null}
       </div>
 
       {toast ? (
-        <div className="fixed right-4 bottom-4 z-40 rounded-full bg-[#1C1917] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_20px_rgba(28,25,23,0.18)]">
+        <div className="fixed right-4 bottom-4 z-40 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-[13px] font-semibold text-[var(--text)] shadow-[var(--shadow-soft)]">
           {toast}
         </div>
       ) : null}

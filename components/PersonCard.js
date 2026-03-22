@@ -43,14 +43,12 @@ function CountUpBalance({ value }) {
 
     const startedAt = performance.now();
     const duration = 850;
-    const initial = 0;
     let frameId = 0;
 
     function tick(now) {
       const progress = Math.min((now - startedAt) / duration, 1);
       const eased = 1 - (1 - progress) ** 3;
-      const next = initial + (value - initial) * eased;
-      setDisplayValue(next);
+      setDisplayValue(value * eased);
 
       if (progress < 1) {
         frameId = window.requestAnimationFrame(tick);
@@ -69,15 +67,15 @@ export default function PersonCard({ person, index = 0, onOpen }) {
   const isNegative = person.balance < 0;
   const arrow = isPositive ? "↑" : isNegative ? "↓" : "•";
   const arrowTone = isPositive
-    ? "bg-[rgba(16,185,129,0.1)] text-[#10B981]"
+    ? "bg-[rgba(16,185,129,0.1)] text-[var(--success)]"
     : isNegative
-      ? "bg-[rgba(220,38,38,0.1)] text-[#DC2626]"
-      : "bg-[#F3F4F6] text-[#9CA3AF]";
+      ? "bg-[rgba(220,38,38,0.1)] text-[var(--danger)]"
+      : "bg-[var(--surface-muted)] text-[var(--text-soft)]";
   const buttonTone = isPositive
-    ? "bg-[#E1F9D8] text-[#3A4E43] hover:bg-[#CFEEC1]"
+    ? "bg-[var(--surface-accent)] text-[var(--accent-strong)] hover:bg-[var(--accent-soft-hover)]"
     : isNegative
-      ? "bg-[#5F7D6A] text-white hover:bg-[#3A4E43]"
-      : "bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB]";
+      ? "bg-[var(--accent)] text-white hover:opacity-90"
+      : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:opacity-90";
   const buttonLabel = !person.isOnEvenly
     ? person.balance !== 0
       ? "Track outside app"
@@ -104,7 +102,7 @@ export default function PersonCard({ person, index = 0, onOpen }) {
         },
       }}
       whileTap={{ scale: 0.985 }}
-      className="w-full rounded-[16px] border border-[#E5E7EB] bg-white p-5 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+      className="w-full rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -117,7 +115,7 @@ export default function PersonCard({ person, index = 0, onOpen }) {
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="truncate text-[20px] font-semibold tracking-[-0.03em] text-[#1C1917]">
+              <div className="truncate text-[20px] font-semibold tracking-[-0.03em] text-[var(--text)]">
                 {person.displayName}
               </div>
               {!person.isOnEvenly ? (
@@ -126,7 +124,7 @@ export default function PersonCard({ person, index = 0, onOpen }) {
                 </span>
               ) : null}
             </div>
-            <div className="mt-1 text-[13px] text-[#6B7280]">
+            <div className="mt-1 text-[13px] text-[var(--text-muted)]">
               {person.sharedGroupCount} {person.sharedGroupCount === 1 ? "group" : "groups"} • {formatLastActivity(person.lastActivityAt)}
             </div>
           </div>
@@ -137,11 +135,11 @@ export default function PersonCard({ person, index = 0, onOpen }) {
         </div>
       </div>
 
-      <div className="mt-4 border-t border-[#F3F4F6] pt-4">
-        <div className={`text-[36px] font-bold tracking-[-0.05em] ${isPositive ? "text-[#10B981]" : isNegative ? "text-[#DC2626]" : "text-[#6B7280]"}`}>
+      <div className="mt-4 border-t border-[var(--border-soft)] pt-4">
+        <div className={`text-[36px] font-bold tracking-[-0.05em] ${isPositive ? "text-[var(--success)]" : isNegative ? "text-[var(--danger)]" : "text-[var(--text-muted)]"}`}>
           <CountUpBalance value={person.balance} />
         </div>
-        <div className="mt-1 text-[14px] font-medium text-[#6B7280]">{statusLabel}</div>
+        <div className="mt-1 text-[14px] font-medium text-[var(--text-muted)]">{statusLabel}</div>
       </div>
 
       <div className="mt-4">

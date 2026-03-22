@@ -132,26 +132,26 @@ export default function PaymentModal({
   const chosenMethod = methods.find((method) => method.key === selectedMethod) || null;
 
   return (
-    <div className="fixed inset-0 z-[65] bg-[rgba(28,25,23,0.38)]" onClick={onClose}>
+    <div className="fixed inset-0 z-[65] bg-[var(--overlay)]" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="payment-modal-title"
-        className="fixed inset-x-0 bottom-0 rounded-t-[24px] bg-white px-6 pt-6 pb-8 shadow-[0_-16px_36px_rgba(28,25,23,0.16)]"
+        className="fixed inset-x-0 bottom-0 rounded-t-[24px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-8 shadow-[0_-16px_36px_rgba(28,25,23,0.16)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[#E5E7EB]" />
+        <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[var(--border)]" />
 
-        <h2 id="payment-modal-title" className="text-[24px] font-bold tracking-[-0.04em] text-[#1C1917]">
+        <h2 id="payment-modal-title" className="text-[24px] font-bold tracking-[-0.04em] text-[var(--text)]">
           {methodTitle(direction, counterpartyName)}
         </h2>
-        <div className="mt-2 text-[32px] font-bold tracking-[-0.05em] text-[#5F7D6A]">
+        <div className="mt-2 text-[32px] font-bold tracking-[-0.05em] text-[var(--accent)]">
           {formatCurrency(amount)}
         </div>
 
         {!chosenMethod ? (
           <>
-            <p className="mt-6 text-[13px] font-medium uppercase tracking-[0.1em] text-[#6B7280]">
+            <p className="mt-6 text-[13px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)]">
               Choose payment method
             </p>
 
@@ -166,11 +166,11 @@ export default function PaymentModal({
                       openExternalPaymentLink(method.action);
                     }
                   }}
-                  className="flex min-h-14 w-full items-center justify-between rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-left transition hover:bg-[#F3F4F6] active:scale-[0.99]"
+                  className="flex min-h-14 w-full items-center justify-between rounded-[12px] border border-[var(--border)] bg-[var(--surface-muted)] px-4 text-left transition hover:opacity-90 active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-[22px]">{method.emoji}</span>
-                    <span className="text-[16px] font-medium text-[#1C1917]">{method.label}</span>
+                    <span className="text-[16px] font-medium text-[var(--text)]">{method.label}</span>
                   </div>
                   <ChevronIcon />
                 </button>
@@ -178,11 +178,11 @@ export default function PaymentModal({
             </div>
           </>
         ) : (
-          <div className="mt-6 rounded-[20px] bg-[#F7F7F5] p-5">
-            <div className="text-[18px] font-semibold text-[#1C1917]">
+          <div className="mt-6 rounded-[20px] bg-[var(--surface-muted)] p-5">
+            <div className="text-[18px] font-semibold text-[var(--text)]">
               Did you complete the payment?
             </div>
-            <p className="mt-3 text-[14px] leading-6 text-[#6B7280]">
+            <p className="mt-3 text-[14px] leading-6 text-[var(--text-muted)]">
               {methodConfirmationCopy(direction, counterpartyName, amount, chosenMethod.label)}
             </p>
 
@@ -190,7 +190,7 @@ export default function PaymentModal({
               <button
                 type="button"
                 onClick={() => setSelectedMethod("")}
-                className="min-h-11 rounded-[10px] border border-[#E5E7EB] bg-white px-4 text-[15px] font-medium text-[#6B7280] transition hover:bg-[#F3F4F6]"
+                className="min-h-11 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)]"
               >
                 Not yet
               </button>
@@ -205,7 +205,7 @@ export default function PaymentModal({
                   })
                 }
                 disabled={isSubmitting}
-                className="min-h-11 rounded-[10px] bg-[#5F7D6A] px-4 text-[15px] font-medium text-white transition hover:bg-[#3A4E43] disabled:cursor-not-allowed disabled:bg-[#A3B8A8]"
+                className="min-h-11 rounded-[10px] bg-[var(--accent)] px-4 text-[15px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting ? "Saving..." : "Yes, settled"}
               </button>
@@ -216,7 +216,7 @@ export default function PaymentModal({
         <button
           type="button"
           onClick={onClose}
-          className="mt-5 min-h-11 w-full rounded-[10px] bg-transparent text-[15px] font-medium text-[#6B7280] transition hover:bg-[#F7F7F5]"
+          className="mt-5 min-h-11 w-full rounded-[10px] bg-transparent text-[15px] font-medium text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)]"
         >
           Cancel
         </button>

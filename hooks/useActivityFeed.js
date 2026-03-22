@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { computeExpenseShares, getExpenseTitle } from "../lib/utils";
+import { computeExpenseShares, getExpenseEmoji, getExpenseTitle } from "../lib/utils";
 
 function settlementAmount(settlement) {
   if (settlement?.amount != null) return Number(settlement.amount || 0);
@@ -46,11 +46,13 @@ export default function useActivityFeed(user, limit = 10) {
           return;
         }
 
-        const [groupsResponse, membersResponse, expensesResponse, settlementsResponse] = await Promise.all([
+        const [groupsResponse, membersResponse, expensesResponse, settlementsResponse, expenseParticipantsResponse] =
+          await Promise.all([
           supabase.from("groups").select("id, name").in("id", groupIds),
           supabase.from("group_members").select("*").in("group_id", groupIds),
           supabase.from("expenses").select("*").in("group_id", groupIds).order("created_at", { ascending: false }),
           supabase.from("settlements").select("*").in("group_id", groupIds).order("settled_at", { ascending: false }),
+          supabase.from("expense_participants").select("*").in("group_id", groupIds),
         ]);
 
         if (groupsResponse.error) throw groupsResponse.error;
@@ -67,17 +69,36 @@ export default function useActivityFeed(user, limit = 10) {
           throw settlementsResponse.error;
         }
 
+        const expenseParticipantsTableMissing =
+          expenseParticipantsResponse.error &&
+          (String(expenseParticipantsResponse.error.code || "") === "PGRST205" ||
+            String(expenseParticipantsResponse.error.code || "") === "42P01" ||
+            /expense_participants/i.test(String(expenseParticipantsResponse.error.message || "")));
+
+        if (expenseParticipantsResponse.error && !expenseParticipantsTableMissing) {
+          throw expenseParticipantsResponse.error;
+        }
+
         const currentMembershipByGroup = new Map(
           memberships.map((membership) => [membership.group_id, membership]),
         );
         const groupNameById = new Map((groupsResponse.data || []).map((group) => [group.id, group.name]));
         const memberById = new Map((membersResponse.data || []).map((member) => [member.id, member]));
         const memberByUserId = new Map();
+        const relatedContactIdsByExpense = new Map();
 
         for (const member of membersResponse.data || []) {
           if (!memberByUserId.has(member.user_id)) {
             memberByUserId.set(member.user_id, member);
           }
+        }
+
+        for (const row of expenseParticipantsTableMissing ? [] : expenseParticipantsResponse.data || []) {
+          if (!row.contact_id) continue;
+          relatedContactIdsByExpense.set(row.expense_id, [
+            ...(relatedContactIdsByExpense.get(row.expense_id) || []),
+            row.contact_id,
+          ]);
         }
 
         const activityItems = [];
@@ -93,6 +114,7 @@ export default function useActivityFeed(user, limit = 10) {
           const relatedUserIds = participantIds
             .map((participantId) => memberById.get(participantId)?.user_id)
             .filter((participantUserId) => participantUserId && participantUserId !== user.id);
+          const relatedContactIds = relatedContactIdsByExpense.get(expense.id) || [];
 
           const shares = computeExpenseShares(expense);
           const currentShare = Number(shares[currentMembership.id] || 0) / 100;
@@ -100,11 +122,7 @@ export default function useActivityFeed(user, limit = 10) {
           activityItems.push({
             id: `expense-${expense.id}`,
             type: "expense",
-            icon: expense.title?.toLowerCase().includes("pizza")
-              ? "🍕"
-              : expense.title?.toLowerCase().includes("grocery")
-                ? "🛒"
-                : "💸",
+            icon: getExpenseEmoji(expense),
             title:
               expense.paid_by === currentMembership.id
                 ? `You added ${getExpenseTitle(expense)}`
@@ -112,7 +130,7 @@ export default function useActivityFeed(user, limit = 10) {
             meta: `${groupNameById.get(expense.group_id) || "Shared group"} • ${expense.paid_by === currentMembership.id ? `Your share ${currentShare ? `$${currentShare.toFixed(2)}` : ""}` : "Shared expense"}`.trim(),
             groupId: expense.group_id,
             createdAt: expense.created_at,
-            relatedUserIds,
+            relatedUserIds: [...new Set([...relatedUserIds, ...relatedContactIds])],
           });
         }
 

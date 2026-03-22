@@ -48,7 +48,7 @@ export default function BottomNav() {
   if (!shouldShow) return null;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E5E7EB] bg-[rgba(255,255,255,0.82)] backdrop-blur-[20px]">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--nav)] backdrop-blur-[20px]">
       <div className="mx-auto flex h-[68px] w-full max-w-[520px] items-center pb-[env(safe-area-inset-bottom)]">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
@@ -63,11 +63,11 @@ export default function BottomNav() {
               aria-label={item.label}
               className="flex flex-1 flex-col items-center justify-center gap-1"
             >
-              <div className={`relative ${active ? "text-[#5F7D6A]" : "text-[#9CA3AF]"}`}>
-                {active ? <div className="absolute -top-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#5F7D6A]" /> : null}
+              <div className={`relative ${active ? "text-[var(--accent)]" : "text-[var(--text-soft)]"}`}>
+                {active ? <div className="absolute -top-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--accent)]" /> : null}
                 <Icon />
               </div>
-              <span className={`text-[11px] font-medium ${active ? "text-[#1C1917]" : "text-[#9CA3AF]"}`}>
+              <span className={`text-[11px] font-medium ${active ? "text-[var(--text)]" : "text-[var(--text-soft)]"}`}>
                 {item.label}
               </span>
             </motion.button>

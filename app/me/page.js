@@ -5,24 +5,30 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import ActivityFeed from "../../components/ActivityFeed";
 import MeStats from "../../components/MeStats";
-import ProfileSettings from "../../components/ProfileSettings";
 import useActivityFeed from "../../hooks/useActivityFeed";
 import useNetPosition from "../../hooks/useNetPosition";
+import useTheme from "../../hooks/useTheme";
 import { pageTransition } from "../../lib/animations";
 import { supabase } from "../../lib/supabase";
 
-function SettingsIcon() {
+function ThemeIcon({ isDark }) {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 3v3" />
-      <path d="M12 18v3" />
-      <path d="M3 12h3" />
-      <path d="M18 12h3" />
-      <path d="m5.6 5.6 2.1 2.1" />
-      <path d="m16.3 16.3 2.1 2.1" />
-      <path d="m18.4 5.6-2.1 2.1" />
-      <path d="m7.7 16.3-2.1 2.1" />
-      <circle cx="12" cy="12" r="3.5" />
+      {isDark ? (
+        <>
+          <path d="M12 3v2.5" />
+          <path d="M12 18.5V21" />
+          <path d="M3 12h2.5" />
+          <path d="M18.5 12H21" />
+          <path d="m5.6 5.6 1.8 1.8" />
+          <path d="m16.6 16.6 1.8 1.8" />
+          <path d="m18.4 5.6-1.8 1.8" />
+          <path d="m7.4 16.6-1.8 1.8" />
+          <circle cx="12" cy="12" r="4" />
+        </>
+      ) : (
+        <path d="M20 15.2A7.5 7.5 0 1 1 8.8 4a6.4 6.4 0 0 0 11.2 11.2Z" />
+      )}
     </svg>
   );
 }
@@ -73,10 +79,10 @@ function defaultStats() {
 export default function MePage() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
+  const { isDark, toggleTheme } = useTheme();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState(defaultStats());
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { netPosition, peopleCount } = useNetPosition(user);
   const activityFeed = useActivityFeed(user, 8);
 
@@ -86,10 +92,7 @@ export default function MePage() {
       return;
     }
 
-    const membershipsResponse = await supabase
-      .from("group_members")
-      .select("*")
-      .eq("user_id", currentUser.id);
+    const membershipsResponse = await supabase.from("group_members").select("*").eq("user_id", currentUser.id);
 
     if (membershipsResponse.error) {
       console.error(membershipsResponse.error);
@@ -110,11 +113,7 @@ export default function MePage() {
 
     const [membersResponse, expensesResponse, profileResponse] = await Promise.all([
       supabase.from("group_members").select("*").in("group_id", groupIds),
-      supabase
-        .from("expenses")
-        .select("*")
-        .in("group_id", groupIds)
-        .gte("created_at", startOfMonth.toISOString()),
+      supabase.from("expenses").select("*").in("group_id", groupIds).gte("created_at", startOfMonth.toISOString()),
       supabase.from("profiles").select("*").eq("user_id", currentUser.id).maybeSingle(),
     ]);
 
@@ -193,10 +192,7 @@ export default function MePage() {
 
   const settingsRows = useMemo(
     () => [
-      { label: "Profile", action: () => setIsProfileOpen(true) },
       { label: "Notifications", action: () => {} },
-      { label: "Payment Methods", action: () => setIsProfileOpen(true) },
-      { label: "Privacy & Security", action: () => {} },
       { label: "Help & Support", action: () => {} },
       { label: "About Evenly", action: () => {} },
     ],
@@ -205,38 +201,42 @@ export default function MePage() {
 
   return (
     <motion.main
-      className="min-h-screen bg-[#F7F7F5] pb-28"
+      className="min-h-screen bg-[var(--bg)] pb-28"
       initial={reduceMotion ? false : pageTransition.initial}
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
     >
       <div className="mx-auto w-full max-w-[460px] px-6 pt-6">
-        <section className="rounded-[28px] bg-[linear-gradient(180deg,#F7F7F5_0%,#FFFFFF_100%)] px-6 py-6">
+        <section className="rounded-[28px] border border-[var(--border)] bg-[linear-gradient(180deg,var(--bg)_0%,var(--surface)_100%)] px-6 py-6">
           <div className="flex items-start justify-between">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E1F9D8] text-[22px] font-semibold text-[#3A4E43]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[22px] font-semibold text-[var(--accent-strong)]">
               {(profile?.display_name || user?.email || "E").slice(0, 1).toUpperCase()}
             </div>
             <button
               type="button"
-              onClick={() => setIsProfileOpen(true)}
-              className="text-[#6B7280] transition hover:text-[#1C1917]"
-              aria-label="Open settings"
+              onClick={toggleTheme}
+              className="text-[var(--text-muted)] transition hover:text-[var(--text)]"
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
-              <SettingsIcon />
+              <ThemeIcon isDark={isDark} />
             </button>
           </div>
 
-          <div className="mt-4 text-[28px] font-bold tracking-[-0.04em] text-[#1C1917]">
+          <div className="mt-4 text-[28px] font-bold tracking-[-0.04em] text-[var(--text)]">
             {profile?.display_name || user?.user_metadata?.display_name || user?.email?.split("@")[0] || "You"}
           </div>
-          <div className="mt-1 text-[15px] text-[#6B7280]">
+          <div className="mt-1 text-[15px] text-[var(--text-muted)]">
             @{profile?.username || user?.email?.split("@")[0] || "evenly"}
           </div>
 
-          <div className={`mt-6 text-[56px] leading-none font-bold tracking-[-0.06em] ${netPosition > 0 ? "text-[#10B981]" : netPosition < 0 ? "text-[#DC2626]" : "text-[#6B7280]"}`}>
+          <div
+            className={`mt-6 text-[56px] leading-none font-bold tracking-[-0.06em] ${
+              netPosition > 0 ? "text-[var(--success)]" : netPosition < 0 ? "text-[var(--danger)]" : "text-[var(--text-muted)]"
+            }`}
+          >
             <CountUpCurrency value={netPosition} />
           </div>
-          <div className="mt-2 text-[14px] font-medium text-[#6B7280]">net across all groups</div>
+          <div className="mt-2 text-[14px] font-medium text-[var(--text-muted)]">net across all groups</div>
         </section>
 
         <div className="mt-4">
@@ -252,16 +252,33 @@ export default function MePage() {
           />
         </div>
 
-        <section className="mt-4 rounded-[16px] border border-[#E5E7EB] bg-white">
+        <section className="mt-4 rounded-[16px] border border-[var(--border)] bg-[var(--surface)]">
+          <div className="flex items-center justify-between border-b border-[var(--border-soft)] px-5 py-4">
+            <div>
+              <div className="text-[16px] font-medium text-[var(--text)]">Dark mode</div>
+              <div className="mt-1 text-[13px] text-[var(--text-muted)]">
+                {isDark ? "On for calmer nighttime testing" : "Currently using light mode"}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`relative h-8 w-14 rounded-full transition ${isDark ? "bg-[var(--accent)]" : "bg-[var(--surface-muted)]"}`}
+              aria-label={isDark ? "Disable dark mode" : "Enable dark mode"}
+            >
+              <span className={`absolute top-1 h-6 w-6 rounded-full bg-white transition ${isDark ? "left-7" : "left-1"}`} />
+            </button>
+          </div>
+
           {settingsRows.map((row) => (
             <button
               key={row.label}
               type="button"
               onClick={row.action}
-              className="flex h-[52px] w-full items-center justify-between border-b border-[#F3F4F6] px-5 text-left last:border-b-0 hover:bg-[#F9FAFB]"
+              className="flex h-[52px] w-full items-center justify-between border-b border-[var(--border-soft)] px-5 text-left last:border-b-0 hover:bg-[var(--surface-muted)]"
             >
-              <span className="text-[16px] font-medium text-[#1C1917]">{row.label}</span>
-              <span className="text-[#9CA3AF]">&gt;</span>
+              <span className="text-[16px] font-medium text-[var(--text)]">{row.label}</span>
+              <span className="text-[var(--text-soft)]">&gt;</span>
             </button>
           ))}
 
@@ -271,24 +288,12 @@ export default function MePage() {
               await supabase.auth.signOut();
               router.replace("/");
             }}
-            className="mt-2 flex h-[52px] w-full items-center px-5 text-left text-[16px] font-medium text-[#DC2626] hover:bg-[#F9FAFB]"
+            className="mt-2 flex h-[52px] w-full items-center px-5 text-left text-[16px] font-medium text-[var(--danger)] hover:bg-[var(--surface-muted)]"
           >
             Log out
           </button>
         </section>
       </div>
-
-      {isProfileOpen ? (
-        <ProfileSettings
-          isOpen={isProfileOpen}
-          user={user}
-          initialProfile={profile}
-          onClose={() => setIsProfileOpen(false)}
-          onSaved={(nextProfile) => {
-            setProfile((previous) => ({ ...(previous || {}), ...nextProfile }));
-          }}
-        />
-      ) : null}
     </motion.main>
   );
 }

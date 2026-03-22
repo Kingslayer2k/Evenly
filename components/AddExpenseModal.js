@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import ReceiptScanner from "./ReceiptScanner";
+import { getExpenseEmoji, stripExpenseEmojiPrefix } from "../lib/utils";
+
+const EXPENSE_EMOJIS = ["💸", "🛒", "🍕", "🍽️", "🎟️", "🏠", "🚕", "☕️", "🎉", "🧾"];
 
 function toCents(value) {
   const parsed = Number.parseFloat(value);
@@ -21,6 +24,7 @@ export default function AddExpenseModal({
   const memberIds = (members || []).map((member) => member.id);
   const contactIds = (contacts || []).map((contact) => contact.id);
   const [title, setTitle] = useState("");
+  const [selectedEmoji, setSelectedEmoji] = useState("💸");
   const [amount, setAmount] = useState("");
   const [paidBy, setPaidBy] = useState(initialPayerId || memberIds[0] || "");
   const [splitMode, setSplitMode] = useState("equal");
@@ -91,6 +95,12 @@ export default function AddExpenseModal({
       return;
     }
 
+    const cleanTitle = stripExpenseEmojiPrefix(title).trim();
+    if (!cleanTitle) {
+      setError("Give the expense a name first.");
+      return;
+    }
+
     if (!amountCents) {
       setError("Add a real amount before saving.");
       return;
@@ -155,7 +165,7 @@ export default function AddExpenseModal({
     setError("");
 
     const result = await onSubmit?.({
-      title: title.trim(),
+      title: `${selectedEmoji} ${cleanTitle}`,
       amountCents,
       paidBy,
       participants: selectedParticipants,
@@ -190,19 +200,19 @@ export default function AddExpenseModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(28,25,23,0.35)]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-[var(--overlay)]" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-[28px] bg-white px-6 pt-6 pb-8 shadow-[0_-10px_40px_rgba(28,25,23,0.14)]"
+        className="fixed inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-8 shadow-[0_-10px_40px_rgba(28,25,23,0.14)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[#E5E7EB]" />
+        <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[var(--border)]" />
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-[28px] font-bold tracking-[-0.04em] text-[#1C1917]">Add expense</h2>
-            <p className="mt-2 text-[14px] leading-5 text-[#6B7280]">
+            <h2 className="text-[28px] font-bold tracking-[-0.04em] text-[var(--text)]">Add expense</h2>
+            <p className="mt-2 text-[14px] leading-5 text-[var(--text-muted)]">
               Drop in what happened and we&apos;ll update everyone live.
             </p>
           </div>
@@ -210,7 +220,7 @@ export default function AddExpenseModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6] text-[#1C1917] transition hover:bg-[#E5E7EB]"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text)] transition hover:opacity-90"
             aria-label="Close add expense modal"
           >
             ×
@@ -230,7 +240,7 @@ export default function AddExpenseModal({
           </div>
 
           <div>
-            <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+            <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
               What was it?
             </label>
             <input
@@ -238,16 +248,42 @@ export default function AddExpenseModal({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Groceries, dinner, gas..."
-              className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#5F7D6A]"
+              className="mt-2 h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
             />
           </div>
 
           <div>
-            <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+            <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+              Emoji
+            </label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {EXPENSE_EMOJIS.map((emoji) => {
+                const active = selectedEmoji === emoji;
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setSelectedEmoji(emoji)}
+                    className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-[20px] transition ${
+                      active
+                        ? "border-[var(--accent)] bg-[var(--surface-accent)]"
+                        : "border-[var(--border)] bg-[var(--surface-muted)]"
+                    }`}
+                    aria-label={`Use ${emoji} for this expense`}
+                  >
+                    {emoji}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
               Amount
             </label>
-            <div className="mt-2 flex h-12 items-center rounded-2xl border border-[#E5E7EB] bg-white px-4 focus-within:border-[#5F7D6A]">
-              <span className="text-[18px] font-semibold text-[#1C1917]">$</span>
+            <div className="mt-2 flex h-12 items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 focus-within:border-[var(--accent)]">
+              <span className="text-[18px] font-semibold text-[var(--text)]">$</span>
               <input
                 type="number"
                 step="0.01"
@@ -255,20 +291,20 @@ export default function AddExpenseModal({
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder="0.00"
-                className="ml-2 w-full bg-transparent text-[16px] text-[#1C1917] outline-none"
+                className="ml-2 w-full bg-transparent text-[16px] text-[var(--text)] outline-none"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+              <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                 Paid by
               </label>
               <select
                 value={paidBy}
                 onChange={(event) => setPaidBy(event.target.value)}
-                className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#5F7D6A]"
+                className="mt-2 h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               >
                 {(members || []).map((member) => (
                   <option key={member.id} value={member.id}>
@@ -279,7 +315,7 @@ export default function AddExpenseModal({
             </div>
 
             <div>
-              <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+              <label className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                 Context
               </label>
               <input
@@ -287,7 +323,7 @@ export default function AddExpenseModal({
                 value={contextName}
                 onChange={handleContextInputChange}
                 placeholder="Shared, spring break, groceries..."
-                className="mt-2 h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 text-[16px] text-[#1C1917] outline-none focus:border-[#5F7D6A]"
+                className="mt-2 h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
               {(contexts || []).length ? (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -304,8 +340,8 @@ export default function AddExpenseModal({
                         }}
                         className={`rounded-full px-3 py-2 text-[13px] font-medium transition ${
                           active
-                            ? "bg-[#E1F9D8] text-[#3A4E43]"
-                            : "bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E1F9D8]"
+                            ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                            : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-accent)]"
                         }`}
                       >
                         {label}
@@ -318,10 +354,10 @@ export default function AddExpenseModal({
           </div>
 
           <div>
-            <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+            <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
               Split
             </div>
-            <div className="mt-2 inline-flex rounded-full bg-[#F3F4F6] p-1">
+            <div className="mt-2 inline-flex rounded-full bg-[var(--surface-muted)] p-1">
               {["equal", "custom"].map((mode) => {
                 const active = splitMode === mode;
                 return (
@@ -330,7 +366,9 @@ export default function AddExpenseModal({
                     type="button"
                     onClick={() => setSplitMode(mode)}
                     className={`rounded-full px-4 py-2 text-[14px] font-semibold capitalize transition ${
-                      active ? "bg-white text-[#1C1917] shadow-[0_2px_6px_rgba(28,25,23,0.08)]" : "text-[#6B7280]"
+                      active
+                        ? "bg-[var(--surface)] text-[var(--text)] shadow-[0_2px_6px_rgba(28,25,23,0.08)]"
+                        : "text-[var(--text-muted)]"
                     }`}
                   >
                     {mode}
@@ -341,7 +379,7 @@ export default function AddExpenseModal({
           </div>
 
           <div>
-            <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+            <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
               In the split
             </div>
             <div className="mt-3 space-y-3">
@@ -350,22 +388,22 @@ export default function AddExpenseModal({
                 return (
                   <div
                     key={member.id}
-                    className="rounded-2xl border border-[#E5E7EB] bg-[#FAFAF8] p-4"
+                    className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4"
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <label className="flex items-center gap-3 text-[15px] text-[#1C1917]">
+                      <label className="flex items-center gap-3 text-[15px] text-[var(--text)]">
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleParticipant(member.id)}
-                          className="h-4 w-4 rounded border-[#D1D5DB] text-[#5F7D6A] focus:ring-[#5F7D6A]"
+                          className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
                         />
                         <span>{member.display_name}</span>
                       </label>
 
                       {splitMode === "custom" && checked ? (
-                        <div className="flex h-10 items-center rounded-xl border border-[#E5E7EB] bg-white px-3">
-                          <span className="text-[14px] font-semibold text-[#1C1917]">$</span>
+                        <div className="flex h-10 items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3">
+                          <span className="text-[14px] font-semibold text-[var(--text)]">$</span>
                           <input
                             type="number"
                             step="0.01"
@@ -377,7 +415,7 @@ export default function AddExpenseModal({
                                 [member.id]: event.target.value,
                               }))
                             }
-                            className="ml-2 w-24 bg-transparent text-right text-[14px] text-[#1C1917] outline-none"
+                            className="ml-2 w-24 bg-transparent text-right text-[14px] text-[var(--text)] outline-none"
                             placeholder="0.00"
                           />
                         </div>
@@ -391,7 +429,7 @@ export default function AddExpenseModal({
 
           {(contacts || []).length ? (
             <div>
-              <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">
+              <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                 Contacts not on Evenly
               </div>
               <div className="mt-3 space-y-3">
@@ -400,22 +438,22 @@ export default function AddExpenseModal({
                   return (
                     <div
                       key={contact.id}
-                      className="rounded-2xl border border-[#E5E7EB] bg-[#FAFAF8] p-4"
+                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4"
                     >
                       <div className="flex items-center justify-between gap-4">
-                        <label className="flex items-center gap-3 text-[15px] text-[#1C1917]">
+                        <label className="flex items-center gap-3 text-[15px] text-[var(--text)]">
                           <input
                             type="checkbox"
                             checked={checked}
                             onChange={() => toggleContact(contact.id)}
-                            className="h-4 w-4 rounded border-[#D1D5DB] text-[#5F7D6A] focus:ring-[#5F7D6A]"
+                            className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
                           />
                           <span>{contact.display_name}</span>
                         </label>
 
                         {splitMode === "custom" && checked ? (
-                          <div className="flex h-10 items-center rounded-xl border border-[#E5E7EB] bg-white px-3">
-                            <span className="text-[14px] font-semibold text-[#1C1917]">$</span>
+                          <div className="flex h-10 items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3">
+                            <span className="text-[14px] font-semibold text-[var(--text)]">$</span>
                             <input
                               type="number"
                               step="0.01"
@@ -427,7 +465,7 @@ export default function AddExpenseModal({
                                   [contact.id]: event.target.value,
                                 }))
                               }
-                              className="ml-2 w-24 bg-transparent text-right text-[14px] text-[#1C1917] outline-none"
+                              className="ml-2 w-24 bg-transparent text-right text-[14px] text-[var(--text)] outline-none"
                               placeholder="0.00"
                             />
                           </div>
@@ -441,31 +479,31 @@ export default function AddExpenseModal({
           ) : null}
 
           {splitMode === "equal" ? (
-            <div className="rounded-2xl bg-[#E1F9D8] px-4 py-3 text-[14px] text-[#3A4E43]">
+            <div className="rounded-2xl bg-[var(--surface-accent)] px-4 py-3 text-[14px] text-[var(--accent-strong)]">
               {selectedMembers.length || selectedContacts.length
                 ? `Each person covers about $${(amountCents / 100 / (selectedMembers.length + selectedContacts.length) || 0).toFixed(2)}.`
                 : "Pick at least one person to split this with."}
             </div>
           ) : (
-            <div className="rounded-2xl bg-[#E1F9D8] px-4 py-3 text-[14px] text-[#3A4E43]">
+            <div className="rounded-2xl bg-[var(--surface-accent)] px-4 py-3 text-[14px] text-[var(--accent-strong)]">
               Custom total: ${((customTotalCents + customContactTotalCents) / 100).toFixed(2)} of ${(amountCents / 100).toFixed(2)}
             </div>
           )}
 
-          {error ? <p className="text-[14px] font-medium text-[#DC2626]">{error}</p> : null}
+          {error ? <p className="text-[14px] font-medium text-[var(--danger)]">{error}</p> : null}
 
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full border border-[#E5E7EB] px-5 py-3 text-[15px] font-semibold text-[#6B7280] transition hover:bg-[#F7F7F5]"
+              className="rounded-full border border-[var(--border)] px-5 py-3 text-[15px] font-semibold text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-full bg-[#5F7D6A] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#3A4E43] disabled:cursor-not-allowed disabled:bg-[#A3B8A8]"
+              className="rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Saving..." : "Save expense"}
             </button>
@@ -482,7 +520,8 @@ export default function AddExpenseModal({
               setAmount(String(detectedAmount));
             }
             if (description) {
-              setTitle(description);
+              setSelectedEmoji(getExpenseEmoji({ title: description }));
+              setTitle(stripExpenseEmojiPrefix(description));
             }
             setError("");
           }}

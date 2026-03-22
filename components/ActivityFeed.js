@@ -28,8 +28,8 @@ export default function ActivityFeed({
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="rounded-[16px] border border-[#E5E7EB] bg-white px-5 py-5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">{title}</div>
+    <section className="rounded-[16px] border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">{title}</div>
 
       {items?.length ? (
         <div className="mt-4">
@@ -39,15 +39,15 @@ export default function ActivityFeed({
               initial={reduceMotion ? false : { opacity: 0, x: 20 }}
               animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
               transition={{ delay: Math.min(index, 7) * 0.05, duration: 0.3 }}
-              className="border-b border-[#F3F4F6] py-3 last:border-b-0"
+              className="border-b border-[var(--border-soft)] py-3 last:border-b-0"
             >
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[rgba(95,125,106,0.1)] text-[18px]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--surface-accent)] text-[18px]">
                   {item.icon}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[15px] font-medium text-[#1C1917]">{item.title}</div>
-                  <div className="mt-1 text-[13px] text-[#6B7280]">
+                  <div className="text-[15px] font-medium text-[var(--text)]">{item.title}</div>
+                  <div className="mt-1 text-[13px] text-[var(--text-muted)]">
                     {item.meta} • {formatRelativeTime(item.createdAt)}
                   </div>
                 </div>
@@ -56,9 +56,9 @@ export default function ActivityFeed({
           ))}
         </div>
       ) : (
-        <div className="mt-4 rounded-[14px] bg-[#F7F7F5] px-4 py-5 text-center">
-          <div className="text-[18px] font-medium text-[#1C1917]">{emptyTitle}</div>
-          <div className="mt-2 text-[14px] leading-6 text-[#6B7280]">{emptyCopy}</div>
+        <div className="mt-4 rounded-[14px] bg-[var(--surface-muted)] px-4 py-5 text-center">
+          <div className="text-[18px] font-medium text-[var(--text)]">{emptyTitle}</div>
+          <div className="mt-2 text-[14px] leading-6 text-[var(--text-muted)]">{emptyCopy}</div>
         </div>
       )}
 
@@ -66,7 +66,7 @@ export default function ActivityFeed({
         <button
           type="button"
           onClick={onViewAll}
-          className="mt-4 min-h-10 w-full rounded-[8px] border border-[#E5E7EB] bg-[#F9FAFB] text-[14px] font-medium text-[#5F7D6A] transition hover:bg-[#F3F4F6]"
+          className="mt-4 min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[var(--surface-muted)] text-[14px] font-medium text-[var(--accent)] transition hover:opacity-90"
         >
           View all activity
         </button>

@@ -1,9 +1,8 @@
 "use client";
 
-export default function DeleteExpenseDialog({
+export default function DeleteGroupDialog({
   isOpen,
-  expenseTitle,
-  expenseAmount,
+  groupName,
   isDeleting = false,
   onCancel,
   onConfirm,
@@ -18,20 +17,18 @@ export default function DeleteExpenseDialog({
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="delete-expense-title"
+        aria-labelledby="delete-group-title"
         className="w-full max-w-[340px] rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[0_18px_44px_rgba(28,25,23,0.18)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="delete-expense-title" className="text-[20px] font-bold tracking-[-0.03em] text-[var(--text)]">
-          Delete this expense?
+        <h2 id="delete-group-title" className="text-[20px] font-bold tracking-[-0.03em] text-[var(--text)]">
+          Delete this group?
         </h2>
 
-        <p className="mt-3 text-[16px] font-medium text-[var(--text-muted)]">
-          {expenseTitle} - {expenseAmount}
-        </p>
+        <p className="mt-3 text-[16px] font-medium text-[var(--text-muted)]">{groupName}</p>
 
         <p className="mt-3 text-[14px] leading-6 text-[var(--text-soft)]">
-          This will remove it for everyone in the group and update all balances.
+          This removes the group for everyone and deletes its expenses, contexts, settlements, and memberships.
         </p>
 
         <div className="mt-6 flex gap-3">

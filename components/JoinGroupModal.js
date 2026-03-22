@@ -67,15 +67,15 @@ export default function JoinGroupModal({ isOpen, onClose, onJoin, initialCode = 
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(58,78,67,0.4)]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-[var(--overlay)]" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 h-[85vh] rounded-t-[24px] bg-white transition duration-300 ease-out"
+        className="fixed inset-x-0 bottom-0 h-[85vh] rounded-t-[24px] border border-[var(--border)] bg-[var(--surface)] transition duration-300 ease-out"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex h-14 items-center justify-between border-b border-[#E5E7EB] px-5">
-          <button type="button" className="text-[16px] font-medium text-[#6B7280]" onClick={onClose}>
+        <div className="flex h-14 items-center justify-between border-b border-[var(--border)] px-5">
+          <button type="button" className="text-[16px] font-medium text-[var(--text-muted)]" onClick={onClose}>
             Cancel
           </button>
           <span />
@@ -83,10 +83,10 @@ export default function JoinGroupModal({ isOpen, onClose, onJoin, initialCode = 
         </div>
 
         <form onSubmit={handleSubmit} className="flex h-[calc(85vh-56px)] flex-col px-6 pt-6 pb-6">
-          <h2 className="text-[28px] font-bold text-[#1C1917]">Join by code</h2>
-          <p className="mt-2 text-[15px] font-normal text-[#6B7280]">No links, no drama.</p>
+          <h2 className="text-[28px] font-bold text-[var(--text)]">Join by code</h2>
+          <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">No links, no drama.</p>
 
-          <label className="mt-8 block text-[13px] font-medium text-[#6B7280]">Code</label>
+          <label className="mt-8 block text-[13px] font-medium text-[var(--text-muted)]">Code</label>
           <input
             ref={inputRef}
             type="text"
@@ -95,18 +95,18 @@ export default function JoinGroupModal({ isOpen, onClose, onJoin, initialCode = 
             value={code}
             onChange={handleInputChange}
             placeholder="ABC123"
-            className="mt-2 h-16 w-full rounded-xl border-2 border-[#E5E7EB] bg-white px-5 text-center font-mono text-[28px] font-bold tracking-[8px] uppercase text-[#1C1917] outline-none focus:border-[#5F7D6A]"
+            className="mt-2 h-16 w-full rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-5 text-center font-mono text-[28px] font-bold tracking-[8px] uppercase text-[var(--text)] outline-none focus:border-[var(--accent)]"
           />
 
           {error ? (
-            <p className="mt-2 text-[14px] font-normal text-[#DC2626]">{error}</p>
+            <p className="mt-2 text-[14px] font-normal text-[var(--danger)]">{error}</p>
           ) : null}
 
           <div className="mt-auto flex justify-end">
             <button
               type="submit"
               disabled={code.length < 6 || isLoading}
-              className="flex min-w-[124px] items-center justify-center gap-2 rounded-xl bg-[#8BA888] px-8 py-3 text-[16px] font-medium text-white transition duration-200 ease-out hover:bg-[#5F7D6A] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+              className="flex min-w-[124px] items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-8 py-3 text-[16px] font-medium text-white transition duration-200 ease-out hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-soft)]"
             >
               {isLoading ? (
                 <>
