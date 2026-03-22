@@ -5,6 +5,11 @@ import ThemeProvider from "../components/ThemeProvider";
 export const metadata = {
   title: "Evenly",
   description: "Split costs with roommates and friends.",
+  icons: {
+    icon: "/app-icon.svg",
+    shortcut: "/app-icon.svg",
+    apple: "/app-icon.svg",
+  },
 };
 
 export const viewport = {

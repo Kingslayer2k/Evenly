@@ -100,7 +100,10 @@ export default function MePage() {
       setStats(cachedStats);
     }
 
-    const membershipsResponse = await supabase.from("group_members").select("*").eq("user_id", currentUser.id);
+    const membershipsResponse = await supabase
+      .from("group_members")
+      .select("id, group_id")
+      .eq("user_id", currentUser.id);
 
     if (membershipsResponse.error) {
       console.error(membershipsResponse.error);
@@ -120,9 +123,13 @@ export default function MePage() {
     startOfMonth.setHours(0, 0, 0, 0);
 
     const [membersResponse, expensesResponse, profileResponse] = await Promise.all([
-      supabase.from("group_members").select("*").in("group_id", groupIds),
-      supabase.from("expenses").select("*").in("group_id", groupIds).gte("created_at", startOfMonth.toISOString()),
-      supabase.from("profiles").select("*").eq("user_id", currentUser.id).maybeSingle(),
+      supabase.from("group_members").select("id, user_id").in("group_id", groupIds),
+      supabase
+        .from("expenses")
+        .select("group_id, participants, amount_cents, round_up_cents, created_at")
+        .in("group_id", groupIds)
+        .gte("created_at", startOfMonth.toISOString()),
+      supabase.from("profiles").select("display_name, username").eq("user_id", currentUser.id).maybeSingle(),
     ]);
 
     if (membersResponse.error) {

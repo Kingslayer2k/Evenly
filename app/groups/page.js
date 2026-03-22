@@ -485,15 +485,15 @@ export default function GroupsPage() {
         totalSpent,
         balance: currentBalance,
         cardColor:
-          cardColors[group.id] ||
           group.card_color ||
           group.color ||
+          cardColors[group.id] ||
           getStableCardColor(group.id || group.name, index),
         cardImage:
-          cardImages[group.id] ||
           group.card_image ||
           group.background_image ||
           group.image_url ||
+          cardImages[group.id] ||
           "",
         needsAttention: needsAttention(currentBalance),
       };
@@ -538,9 +538,15 @@ export default function GroupsPage() {
         if (imageData) {
           persistCardImage(group.id, imageData);
         }
-        void updateGroupCardColor(supabase, group.id, color);
+        const syncedColor = await updateGroupCardColor(supabase, group.id, color);
+        if (!syncedColor) {
+          showToast("Color saved on this device. Shared sync still needs a backend field.");
+        }
         if (imageData) {
-          void updateGroupCardImage(supabase, group.id, imageData);
+          const syncedImage = await updateGroupCardImage(supabase, group.id, imageData);
+          if (!syncedImage) {
+            showToast("Image saved on this device. Shared sync still needs a backend field.");
+          }
         }
         await loadGroupsData(user, { refresh: true });
         showToast(`${name} is ready`);
@@ -610,7 +616,7 @@ export default function GroupsPage() {
   const handleCardColorChange = useCallback(
     async (group, nextColor) => {
       persistCardColor(group.id, nextColor);
-      void updateGroupCardColor(supabase, group.id, nextColor);
+      const syncedColor = await updateGroupCardColor(supabase, group.id, nextColor);
       setPreviewState((previous) =>
         previous.group?.id === group.id
           ? {
@@ -622,7 +628,11 @@ export default function GroupsPage() {
             }
           : previous,
       );
-      showToast(`${group.name} card updated`);
+      showToast(
+        syncedColor
+          ? `${group.name} card updated`
+          : `${group.name} color saved here. Shared sync still needs a backend field.`,
+      );
     },
     [persistCardColor, showToast],
   );
@@ -630,7 +640,7 @@ export default function GroupsPage() {
   const handleCardImageChange = useCallback(
     async (group, imageData) => {
       persistCardImage(group.id, imageData);
-      void updateGroupCardImage(supabase, group.id, imageData);
+      const syncedImage = await updateGroupCardImage(supabase, group.id, imageData);
       setPreviewState((previous) =>
         previous.group?.id === group.id
           ? {
@@ -642,7 +652,11 @@ export default function GroupsPage() {
             }
           : previous,
       );
-      showToast(`${group.name} background updated`);
+      showToast(
+        syncedImage
+          ? `${group.name} background updated`
+          : `${group.name} image saved here. Shared sync still needs a backend field.`,
+      );
     },
     [persistCardImage, showToast],
   );

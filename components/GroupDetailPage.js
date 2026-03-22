@@ -13,6 +13,7 @@ import {
   createExpenseRecord,
   deleteGroupRecord,
   deleteExpenseRecord,
+  leaveGroupRecord,
   loadGroupDetailBundle,
   updateExpensePayerRecord,
 } from "../lib/groupData";
@@ -33,6 +34,7 @@ import {
 const AddExpenseModal = dynamic(() => import("./AddExpenseModal"), { loading: () => null });
 const DeleteGroupDialog = dynamic(() => import("./DeleteGroupDialog"), { loading: () => null });
 const ExpenseDetail = dynamic(() => import("./ExpenseDetail"), { loading: () => null });
+const LeaveGroupDialog = dynamic(() => import("./LeaveGroupDialog"), { loading: () => null });
 const PaymentModal = dynamic(() => import("./PaymentModal"), { loading: () => null });
 const PayerSwitchModal = dynamic(() => import("./PayerSwitchModal"), { loading: () => null });
 
@@ -168,6 +170,8 @@ export default function GroupDetailPage({ groupId }) {
   const [isDeletingExpense, setIsDeletingExpense] = useState(false);
   const [isDeleteGroupOpen, setIsDeleteGroupOpen] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [isLeaveGroupOpen, setIsLeaveGroupOpen] = useState(false);
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
   const [paymentFlow, setPaymentFlow] = useState(null);
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(720);
@@ -209,16 +213,16 @@ export default function GroupDetailPage({ groupId }) {
         setContacts(nextContacts || []);
         setRecordedSettlements(bundle.recordedSettlements || []);
         setCardColor(
-          readStoredCardColor(bundle.group?.id) ||
-            bundle.group?.card_color ||
+          bundle.group?.card_color ||
             bundle.group?.color ||
+            readStoredCardColor(bundle.group?.id) ||
             getStableCardColor(bundle.group?.id || bundle.group?.name),
         );
         setCardImage(
-          readStoredCardImage(bundle.group?.id) ||
-            bundle.group?.card_image ||
+          bundle.group?.card_image ||
             bundle.group?.background_image ||
             bundle.group?.image_url ||
+            readStoredCardImage(bundle.group?.id) ||
             "",
         );
       } catch (error) {
@@ -445,6 +449,23 @@ export default function GroupDetailPage({ groupId }) {
       setIsDeletingGroup(false);
     }
   }, [group?.id, router, showToast]);
+
+  const handleLeaveGroup = useCallback(async () => {
+    if (!supabase || !group?.id || !user?.id) return;
+
+    setIsLeavingGroup(true);
+
+    try {
+      await leaveGroupRecord(supabase, group.id, user.id);
+      router.replace("/groups");
+    } catch (error) {
+      console.error(error);
+      setIsLeaveGroupOpen(false);
+      showToast(error.message || "Could not leave the group yet");
+    } finally {
+      setIsLeavingGroup(false);
+    }
+  }, [group?.id, router, showToast, user?.id]);
 
   const handleDeleteExpense = useCallback(
     async (expense) => {
@@ -702,6 +723,13 @@ export default function GroupDetailPage({ groupId }) {
                     <ShareIcon />
                     Share invite
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsLeaveGroupOpen(true)}
+                    className="rounded-full border border-white/45 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-white/10"
+                  >
+                    Leave group
+                  </button>
                   {membership?.role === "admin" ? (
                     <button
                       type="button"
@@ -873,6 +901,16 @@ export default function GroupDetailPage({ groupId }) {
           isDeleting={isDeletingGroup}
           onCancel={() => setIsDeleteGroupOpen(false)}
           onConfirm={handleDeleteGroup}
+        />
+      ) : null}
+
+      {isLeaveGroupOpen ? (
+        <LeaveGroupDialog
+          isOpen={isLeaveGroupOpen}
+          groupName={group?.name || "This group"}
+          isLeaving={isLeavingGroup}
+          onCancel={() => setIsLeaveGroupOpen(false)}
+          onConfirm={handleLeaveGroup}
         />
       ) : null}
     </main>

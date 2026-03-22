@@ -47,7 +47,7 @@ export default function usePersonBalances(user) {
       try {
         const membershipsResponse = await supabase
           .from("group_members")
-          .select("*")
+          .select("id, group_id")
           .eq("user_id", user.id);
 
         if (membershipsResponse.error) throw membershipsResponse.error;
@@ -64,11 +64,26 @@ export default function usePersonBalances(user) {
 
         const [groupsResponse, membersResponse, expensesResponse, settlementsResponse, contactsResponse, expenseParticipantsResponse] = await Promise.all([
           supabase.from("groups").select("id, name").in("id", groupIds),
-          supabase.from("group_members").select("*").in("group_id", groupIds),
-          supabase.from("expenses").select("*").in("group_id", groupIds),
-          supabase.from("settlements").select("*").in("group_id", groupIds),
-          supabase.from("contacts").select("*").eq("owner_user_id", user.id),
-          supabase.from("expense_participants").select("*").in("group_id", groupIds),
+          supabase
+            .from("group_members")
+            .select("id, group_id, user_id, display_name, created_at")
+            .in("group_id", groupIds),
+          supabase
+            .from("expenses")
+            .select("id, group_id, paid_by, participants, shares, split_type, amount_cents, round_up_cents, created_at")
+            .in("group_id", groupIds),
+          supabase
+            .from("settlements")
+            .select("id, group_id, from_user_id, to_user_id, amount, amount_cents, settled_at, created_at")
+            .in("group_id", groupIds),
+          supabase
+            .from("contacts")
+            .select("id, display_name, phone, email, status, linked_user_id, created_at")
+            .eq("owner_user_id", user.id),
+          supabase
+            .from("expense_participants")
+            .select("expense_id, group_id, contact_id, share_cents")
+            .in("group_id", groupIds),
         ]);
 
         if (groupsResponse.error) throw groupsResponse.error;

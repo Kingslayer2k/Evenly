@@ -38,7 +38,7 @@ export default function useActivityFeed(user, limit = 10) {
       try {
         const membershipsResponse = await supabase
           .from("group_members")
-          .select("*")
+          .select("id, group_id")
           .eq("user_id", user.id);
 
         if (membershipsResponse.error) throw membershipsResponse.error;
@@ -57,10 +57,24 @@ export default function useActivityFeed(user, limit = 10) {
         const [groupsResponse, membersResponse, expensesResponse, settlementsResponse, expenseParticipantsResponse] =
           await Promise.all([
           supabase.from("groups").select("id, name").in("id", groupIds),
-          supabase.from("group_members").select("*").in("group_id", groupIds),
-          supabase.from("expenses").select("*").in("group_id", groupIds).order("created_at", { ascending: false }),
-          supabase.from("settlements").select("*").in("group_id", groupIds).order("settled_at", { ascending: false }),
-          supabase.from("expense_participants").select("*").in("group_id", groupIds),
+          supabase
+            .from("group_members")
+            .select("id, group_id, user_id, display_name")
+            .in("group_id", groupIds),
+          supabase
+            .from("expenses")
+            .select("id, group_id, paid_by, participants, shares, split_type, amount_cents, round_up_cents, created_at, title")
+            .in("group_id", groupIds)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("settlements")
+            .select("id, group_id, from_user_id, to_user_id, amount, amount_cents, payment_method, settled_at, created_at")
+            .in("group_id", groupIds)
+            .order("settled_at", { ascending: false }),
+          supabase
+            .from("expense_participants")
+            .select("expense_id, group_id, contact_id")
+            .in("group_id", groupIds),
         ]);
 
         if (groupsResponse.error) throw groupsResponse.error;
