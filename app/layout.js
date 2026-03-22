@@ -7,11 +7,15 @@ export const metadata = {
   description: "Split costs with roommates and friends.",
 };
 
+export const viewport = {
+  themeColor: "#3A4E43",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className="antialiased transition-colors duration-300"
+        className="min-h-screen antialiased transition-colors duration-300"
         style={{
           fontFamily: "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
           fontWeight: 500,

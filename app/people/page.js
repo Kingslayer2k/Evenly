@@ -1,14 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import AddPersonModal from "../../components/AddPersonModal";
+import { List } from "react-window";
 import PersonCard from "../../components/PersonCard";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
+import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import usePersonBalances from "../../hooks/usePersonBalances";
 import { createContactRecord } from "../../lib/groupData";
-import { supabase } from "../../lib/supabase";
 import { pageTransition } from "../../lib/animations";
+import { supabase } from "../../lib/supabase";
+
+const AddPersonModal = dynamic(() => import("../../components/AddPersonModal"), {
+  loading: () => null,
+});
 
 function SearchIcon() {
   return (
@@ -32,14 +39,26 @@ function PeopleSkeleton() {
   );
 }
 
+function PersonListRow({ index, style, people, onOpen, ariaAttributes }) {
+  const person = people[index];
+
+  return (
+    <div style={{ ...style, left: 0, right: 0, padding: "0 24px 12px" }} {...ariaAttributes}>
+      <PersonCard person={person} index={index} onOpen={onOpen} />
+    </div>
+  );
+}
+
 export default function PeoplePage() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useLowPerformanceMode();
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [query, setQuery] = useState("");
   const [isAddPersonOpen, setIsAddPersonOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(720);
   const { people, isLoading, error } = usePersonBalances(user);
+  const debouncedQuery = useDebouncedValue(query, 300);
 
   useEffect(() => {
     if (!supabase) return;
@@ -66,8 +85,25 @@ export default function PeoplePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function updateViewportHeight() {
+      setViewportHeight(window.innerHeight || 720);
+    }
+
+    updateViewportHeight();
+    window.addEventListener("resize", updateViewportHeight);
+    return () => window.removeEventListener("resize", updateViewportHeight);
+  }, []);
+
+  useEffect(() => {
+    router.prefetch("/groups");
+    router.prefetch("/me");
+  }, [router]);
+
   const filteredPeople = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = debouncedQuery.trim().toLowerCase();
     if (!normalizedQuery) return people;
 
     return people.filter((person) => {
@@ -76,11 +112,50 @@ export default function PeoplePage() {
         person.sharedGroups.some((group) => group.name.toLowerCase().includes(normalizedQuery))
       );
     });
-  }, [people, query]);
+  }, [debouncedQuery, people]);
+
+  useEffect(() => {
+    filteredPeople.slice(0, 6).forEach((person) => {
+      router.prefetch(`/people/${person.id}`);
+    });
+  }, [filteredPeople, router]);
+
+  const handleOpenPerson = useCallback(
+    (personId) => {
+      router.push(`/people/${personId}`);
+    },
+    [router],
+  );
+
+  const handleGoHome = useCallback(() => {
+    router.push("/");
+  }, [router]);
+
+  const handleGoGroups = useCallback(() => {
+    router.push("/groups");
+  }, [router]);
+
+  const handleOpenAddPerson = useCallback(() => {
+    setIsAddPersonOpen(true);
+  }, []);
+
+  const handleCloseAddPerson = useCallback(() => {
+    setIsAddPersonOpen(false);
+  }, []);
+
+  const handleSearchChange = useCallback((event) => {
+    setQuery(event.target.value);
+  }, []);
+
+  const listHeight = useMemo(
+    () => Math.min(Math.max(viewportHeight - 220, 380), filteredPeople.length * 196),
+    [filteredPeople.length, viewportHeight],
+  );
+  const shouldVirtualize = filteredPeople.length > 50;
 
   return (
     <motion.main
-      className="min-h-screen bg-[var(--bg)]"
+      className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[var(--bg)]"
       initial={reduceMotion ? false : pageTransition.initial}
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
@@ -94,9 +169,9 @@ export default function PeoplePage() {
             <input
               type="text"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={handleSearchChange}
               placeholder="Search people..."
-              className="w-full bg-transparent text-[15px] text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
+              className="w-full bg-transparent text-[16px] text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
             />
             <div className="text-[var(--text-soft)]">
               <SearchIcon />
@@ -117,7 +192,7 @@ export default function PeoplePage() {
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/")}
+                onClick={handleGoHome}
                 className="mt-5 rounded-full bg-[var(--accent)] px-5 py-3 text-[15px] font-medium text-white transition hover:opacity-90"
               >
                 Go to welcome
@@ -146,7 +221,7 @@ export default function PeoplePage() {
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/groups")}
+                onClick={handleGoGroups}
                 className="mt-5 rounded-full bg-[var(--surface-accent)] px-5 py-3 text-[15px] font-medium text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft-hover)]"
               >
                 Go to groups
@@ -156,23 +231,35 @@ export default function PeoplePage() {
         ) : null}
 
         {!isLoading && authReady && user && !error && filteredPeople.length ? (
-          <div className="space-y-3 px-6">
-            {filteredPeople.map((person, index) => (
-              <PersonCard
-                key={person.id}
-                person={person}
-                index={index}
-                onOpen={() => router.push(`/people/${person.id}`)}
-              />
-            ))}
-          </div>
+          shouldVirtualize ? (
+            <List
+              defaultHeight={listHeight}
+              rowCount={filteredPeople.length}
+              rowHeight={196}
+              rowComponent={PersonListRow}
+              rowProps={{ people: filteredPeople, onOpen: handleOpenPerson }}
+              overscanCount={4}
+              style={{ height: listHeight, width: "100%" }}
+            />
+          ) : (
+            <div className="space-y-3 px-6">
+              {filteredPeople.map((person, index) => (
+                <PersonCard
+                  key={person.id}
+                  person={person}
+                  index={index}
+                  onOpen={handleOpenPerson}
+                />
+              ))}
+            </div>
+          )
         ) : null}
       </div>
 
       {user ? (
         <button
           type="button"
-          onClick={() => setIsAddPersonOpen(true)}
+          onClick={handleOpenAddPerson}
           className="fixed right-6 bottom-[92px] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent)] text-[28px] text-white shadow-[0_4px_12px_rgba(95,125,106,0.3)] transition hover:opacity-90 active:scale-[0.97]"
           aria-label="Add person"
         >
@@ -180,23 +267,25 @@ export default function PeoplePage() {
         </button>
       ) : null}
 
-      <AddPersonModal
-        isOpen={isAddPersonOpen}
-        onClose={() => setIsAddPersonOpen(false)}
-        onCreate={async (payload) => {
-          try {
-            await createContactRecord(supabase, user, payload);
-            window.location.reload();
-            return { ok: true };
-          } catch (createError) {
-            console.error(createError);
-            return {
-              ok: false,
-              message: createError.message || "Could not add that person.",
-            };
-          }
-        }}
-      />
+      {isAddPersonOpen ? (
+        <AddPersonModal
+          isOpen={isAddPersonOpen}
+          onClose={handleCloseAddPerson}
+          onCreate={async (payload) => {
+            try {
+              await createContactRecord(supabase, user, payload);
+              window.location.reload();
+              return { ok: true };
+            } catch (createError) {
+              console.error(createError);
+              return {
+                ok: false,
+                message: createError.message || "Could not add that person.",
+              };
+            }
+          }}
+        />
+      ) : null}
     </motion.main>
   );
 }

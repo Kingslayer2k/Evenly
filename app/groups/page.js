@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import CreateGroupModal from "../../components/CreateGroupModal";
 import GroupCard from "../../components/GroupCard";
-import JoinGroupModal from "../../components/JoinGroupModal";
-import SettingsMenu from "../../components/SettingsMenu";
+import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import {
   prepareCardBackgroundImage,
   readStoredCardColors,
@@ -36,13 +35,23 @@ import {
 } from "../../lib/utils";
 import { pageTransition } from "../../lib/animations";
 
+const CreateGroupModal = dynamic(() => import("../../components/CreateGroupModal"), {
+  loading: () => null,
+});
+const JoinGroupModal = dynamic(() => import("../../components/JoinGroupModal"), {
+  loading: () => null,
+});
+const SettingsMenu = dynamic(() => import("../../components/SettingsMenu"), {
+  loading: () => null,
+});
+
 function IconButton({ children, onClick, label, spinning = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+      className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
     >
       <div className={spinning ? "animate-spin" : ""}>{children}</div>
     </button>
@@ -246,7 +255,7 @@ function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageC
 
 export default function GroupsPage() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useLowPerformanceMode();
   const toastTimeoutRef = useRef(null);
   const refreshTimerRef = useRef(null);
   const [user, setUser] = useState(null);
@@ -357,6 +366,11 @@ export default function GroupsPage() {
     setCardColors(readStoredCardColors());
     setCardImages(readStoredCardImages());
   }, []);
+
+  useEffect(() => {
+    router.prefetch("/people");
+    router.prefetch("/me");
+  }, [router]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -492,6 +506,12 @@ export default function GroupsPage() {
   );
 
   const stackGap = 64;
+
+  useEffect(() => {
+    displayGroups.slice(0, 4).forEach((group) => {
+      router.prefetch(`/groups/${group.id}`);
+    });
+  }, [displayGroups, router]);
 
   const handleRefresh = useCallback(async () => {
     if (!user) return;
@@ -640,7 +660,7 @@ export default function GroupsPage() {
 
   return (
     <motion.main
-      className="min-h-screen bg-[var(--bg)]"
+      className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[var(--bg)]"
       initial={reduceMotion ? false : pageTransition.initial}
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
@@ -800,29 +820,35 @@ export default function GroupsPage() {
       </div>
 
       {toast ? (
-        <div className="fixed right-4 bottom-4 z-40 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-[13px] font-semibold text-[var(--text)] shadow-[var(--shadow-soft)]">
+        <div className="fixed right-4 bottom-[calc(var(--safe-bottom)+80px)] z-40 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-[13px] font-semibold text-[var(--text)] shadow-[var(--shadow-soft)]">
           {toast}
         </div>
       ) : null}
 
-      <SettingsMenu
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onLogout={() => void handleLogout()}
-      />
+      {isSettingsOpen ? (
+        <SettingsMenu
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onLogout={() => void handleLogout()}
+        />
+      ) : null}
 
-      <CreateGroupModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onCreate={handleCreateGroup}
-      />
+      {isCreateOpen ? (
+        <CreateGroupModal
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onCreate={handleCreateGroup}
+        />
+      ) : null}
 
-      <JoinGroupModal
-        isOpen={isJoinOpen}
-        onClose={handleCloseJoinModal}
-        onJoin={handleJoinGroup}
-        initialCode={prefillJoinCode}
-      />
+      {isJoinOpen ? (
+        <JoinGroupModal
+          isOpen={isJoinOpen}
+          onClose={handleCloseJoinModal}
+          onJoin={handleJoinGroup}
+          initialCode={prefillJoinCode}
+        />
+      ) : null}
 
       <GroupPreviewOverlay
         group={previewState.group}

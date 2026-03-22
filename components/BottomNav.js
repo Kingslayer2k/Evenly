@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -45,11 +46,28 @@ export default function BottomNav() {
   const router = useRouter();
   const shouldShow = pathname === "/groups" || pathname === "/people" || pathname === "/me";
 
+  useEffect(() => {
+    NAV_ITEMS.forEach((item) => {
+      if (item.href !== pathname) {
+        router.prefetch(item.href);
+      }
+    });
+  }, [pathname, router]);
+
+  const handleNavigate = useCallback(
+    (href) => {
+      if (href !== pathname) {
+        router.push(href);
+      }
+    },
+    [pathname, router],
+  );
+
   if (!shouldShow) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--nav)] backdrop-blur-[20px]">
-      <div className="mx-auto flex h-[68px] w-full max-w-[520px] items-center pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex min-h-[72px] w-full max-w-[520px] items-center px-1 pb-[max(env(safe-area-inset-bottom),8px)]">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
           const Icon = item.icon;
@@ -59,9 +77,10 @@ export default function BottomNav() {
               key={item.href}
               type="button"
               whileTap={{ scale: 0.95 }}
-              onClick={() => router.push(item.href)}
+              onClick={() => handleNavigate(item.href)}
+              onPointerEnter={() => router.prefetch(item.href)}
               aria-label={item.label}
-              className="flex flex-1 flex-col items-center justify-center gap-1"
+              className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-2xl"
             >
               <div className={`relative ${active ? "text-[var(--accent)]" : "text-[var(--text-soft)]"}`}>
                 {active ? <div className="absolute -top-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--accent)]" /> : null}

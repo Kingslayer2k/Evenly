@@ -1,6 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { memo } from "react";
+import { motion } from "framer-motion";
+import useLowPerformanceMode from "../hooks/useLowPerformanceMode";
 
 function formatRelativeTime(value) {
   if (!value) return "Just now";
@@ -18,14 +20,14 @@ function formatRelativeTime(value) {
   }).format(new Date(value));
 }
 
-export default function ActivityFeed({
+function ActivityFeed({
   items,
   title = "Recent activity",
   emptyTitle = "No activity yet",
   emptyCopy = "Once expenses and settlements start moving, they’ll show up here.",
   onViewAll,
 }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useLowPerformanceMode();
 
   return (
     <section className="rounded-[16px] border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
@@ -37,9 +39,10 @@ export default function ActivityFeed({
             <motion.div
               key={item.id}
               initial={reduceMotion ? false : { opacity: 0, x: 20 }}
-              animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "120px 0px -10% 0px" }}
               transition={{ delay: Math.min(index, 7) * 0.05, duration: 0.3 }}
-              className="border-b border-[var(--border-soft)] py-3 last:border-b-0"
+              className="content-auto-compact border-b border-[var(--border-soft)] py-3 last:border-b-0"
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--surface-accent)] text-[18px]">
@@ -74,3 +77,5 @@ export default function ActivityFeed({
     </section>
   );
 }
+
+export default memo(ActivityFeed);

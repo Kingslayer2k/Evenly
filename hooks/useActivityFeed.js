@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { readRuntimeCache, writeRuntimeCache } from "../lib/runtimeCache";
 import { computeExpenseShares, getExpenseEmoji, getExpenseTitle } from "../lib/utils";
 
 function settlementAmount(settlement) {
@@ -22,9 +23,16 @@ export default function useActivityFeed(user, limit = 10) {
     }
 
     let isMounted = true;
+    const cacheKey = `activity:${user.id}:${limit}`;
+    const cachedItems = readRuntimeCache(cacheKey, 15000);
+
+    if (cachedItems) {
+      setItems(cachedItems);
+      setIsLoading(false);
+    }
 
     async function loadActivity() {
-      setIsLoading(true);
+      setIsLoading(!cachedItems);
       setError("");
 
       try {
@@ -159,7 +167,9 @@ export default function useActivityFeed(user, limit = 10) {
         );
 
         if (!isMounted) return;
-        setItems(activityItems.slice(0, limit));
+        const nextItems = activityItems.slice(0, limit);
+        writeRuntimeCache(cacheKey, nextItems);
+        setItems(nextItems);
       } catch (nextError) {
         console.error(nextError);
         if (!isMounted) return;

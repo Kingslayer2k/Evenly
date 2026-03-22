@@ -1,12 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import AddExpenseModal from "./AddExpenseModal";
-import DeleteGroupDialog from "./DeleteGroupDialog";
-import ExpenseDetail from "./ExpenseDetail";
-import PaymentModal from "./PaymentModal";
-import PayerSwitchModal from "./PayerSwitchModal";
+import { List } from "react-window";
 import SettlementCard from "./SettlementCard";
 import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
@@ -32,6 +29,12 @@ import {
   getUserSettlementSummary,
   sumGroupTotal,
 } from "../lib/utils";
+
+const AddExpenseModal = dynamic(() => import("./AddExpenseModal"), { loading: () => null });
+const DeleteGroupDialog = dynamic(() => import("./DeleteGroupDialog"), { loading: () => null });
+const ExpenseDetail = dynamic(() => import("./ExpenseDetail"), { loading: () => null });
+const PaymentModal = dynamic(() => import("./PaymentModal"), { loading: () => null });
+const PayerSwitchModal = dynamic(() => import("./PayerSwitchModal"), { loading: () => null });
 
 function readStoredCardColor(groupId) {
   if (typeof window === "undefined") return null;
@@ -71,6 +74,75 @@ function ShareIcon() {
   );
 }
 
+function ExpenseRow({ expense, members, onOpenExpense, onSwitchPayer }) {
+  const payer = members.find((member) => member.id === expense.paid_by);
+  const participantCount = Array.isArray(expense.participants) ? expense.participants.length : 0;
+  const totalAmount =
+    (Number(expense.amount_cents || 0) + Number(expense.round_up_cents || 0)) / 100;
+
+  return (
+    <div
+      onClick={() => onOpenExpense(expense)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenExpense(expense);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="content-auto block w-full rounded-[22px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 text-left transition hover:opacity-95 active:scale-[0.995]"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--surface-accent)] text-[18px]">
+              {getExpenseEmoji(expense)}
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-[16px] font-semibold text-[var(--text)]">
+                {getExpenseTitle(expense)}
+              </div>
+              <div className="mt-1 text-[13px] text-[var(--text-muted)]">
+                Paid by {payer?.display_name || "Someone"} • {participantCount || members.length} people • {formatExpenseDate(expense.created_at)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div className="text-[18px] font-bold tracking-[-0.03em] text-[var(--text)]">
+            {formatCurrency(totalAmount)}
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSwitchPayer(expense);
+            }}
+            className="mt-2 min-h-11 text-[13px] font-semibold text-[var(--accent)] transition hover:opacity-80"
+          >
+            Switch payer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpenseListRow({ index, style, expenses, members, onOpenExpense, onSwitchPayer, ariaAttributes }) {
+  return (
+    <div style={{ ...style, left: 0, right: 0, paddingBottom: 12 }} {...ariaAttributes}>
+      <ExpenseRow
+        expense={expenses[index]}
+        members={members}
+        onOpenExpense={onOpenExpense}
+        onSwitchPayer={onSwitchPayer}
+      />
+    </div>
+  );
+}
+
 export default function GroupDetailPage({ groupId }) {
   const router = useRouter();
   const toastTimeoutRef = useRef(null);
@@ -98,6 +170,7 @@ export default function GroupDetailPage({ groupId }) {
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [paymentFlow, setPaymentFlow] = useState(null);
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(720);
 
   const showToast = useCallback((message) => {
     if (toastTimeoutRef.current) {
@@ -220,6 +293,24 @@ export default function GroupDetailPage({ groupId }) {
   }, [loadDetail]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function updateViewportHeight() {
+      setViewportHeight(window.innerHeight || 720);
+    }
+
+    updateViewportHeight();
+    window.addEventListener("resize", updateViewportHeight);
+    return () => window.removeEventListener("resize", updateViewportHeight);
+  }, []);
+
+  useEffect(() => {
+    router.prefetch("/groups");
+    router.prefetch("/people");
+    router.prefetch("/me");
+  }, [router]);
+
+  useEffect(() => {
     if (!supabase || !user || !groupId) return undefined;
 
     const channel = supabase
@@ -256,6 +347,11 @@ export default function GroupDetailPage({ groupId }) {
   const inviteCode = group?.join_code || group?.code || "------";
   const shareLink = typeof window !== "undefined" ? `${window.location.origin}/groups?join=${inviteCode}` : "";
   const displayName = profileName || getDisplayNameFromUser(user, "");
+  const shouldVirtualizeExpenses = expenses.length > 50;
+  const expenseListHeight = useMemo(
+    () => Math.min(Math.max(viewportHeight - 360, 360), expenses.length * 110),
+    [expenses.length, viewportHeight],
+  );
 
   const getCounterpartyForSettlement = useCallback(
     (item, direction) => {
@@ -387,6 +483,14 @@ export default function GroupDetailPage({ groupId }) {
     [],
   );
 
+  const handleOpenExpense = useCallback((expense) => {
+    setSelectedExpense(expense);
+  }, []);
+
+  const handleOpenExpensePayerSwitch = useCallback((expense) => {
+    setExpenseToReassign(expense);
+  }, []);
+
   const handleConfirmSettlement = useCallback(
     async ({ settlementItem, method, direction, counterparty }) => {
       if (!supabase || !user) {
@@ -457,13 +561,13 @@ export default function GroupDetailPage({ groupId }) {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)]">
+    <main className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[var(--bg)]">
       <header className="fixed inset-x-0 top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-5 py-4 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[460px] items-center justify-between">
           <button
             type="button"
             onClick={() => router.push("/groups")}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text)] transition hover:opacity-90 active:scale-[0.98]"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text)] transition hover:opacity-90 active:scale-[0.98]"
             aria-label="Back to groups"
           >
             <BackIcon />
@@ -481,7 +585,7 @@ export default function GroupDetailPage({ groupId }) {
           <button
             type="button"
             onClick={() => setIsExpenseModalOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-white transition hover:opacity-90 active:scale-[0.98]"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-white transition hover:opacity-90 active:scale-[0.98]"
             aria-label="Add expense"
           >
             <PlusIcon />
@@ -659,62 +763,32 @@ export default function GroupDetailPage({ groupId }) {
               </div>
 
               <div className="mt-4 space-y-3">
-                {expenses.map((expense) => {
-                  const payer = members.find((member) => member.id === expense.paid_by);
-                  const participantCount = Array.isArray(expense.participants) ? expense.participants.length : 0;
-                  const totalAmount =
-                    (Number(expense.amount_cents || 0) + Number(expense.round_up_cents || 0)) / 100;
-
-                  return (
-                    <div
+                {shouldVirtualizeExpenses ? (
+                  <List
+                    defaultHeight={expenseListHeight}
+                    rowCount={expenses.length}
+                    rowHeight={110}
+                    rowComponent={ExpenseListRow}
+                    rowProps={{
+                      expenses,
+                      members,
+                      onOpenExpense: handleOpenExpense,
+                      onSwitchPayer: handleOpenExpensePayerSwitch,
+                    }}
+                    overscanCount={4}
+                    style={{ height: expenseListHeight, width: "100%" }}
+                  />
+                ) : (
+                  expenses.map((expense) => (
+                    <ExpenseRow
                       key={expense.id}
-                      onClick={() => setSelectedExpense(expense)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelectedExpense(expense);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      className="block w-full rounded-[22px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 text-left transition hover:opacity-95 active:scale-[0.995]"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--surface-accent)] text-[18px]">
-                              {getExpenseEmoji(expense)}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="truncate text-[16px] font-semibold text-[var(--text)]">
-                                {getExpenseTitle(expense)}
-                              </div>
-                              <div className="mt-1 text-[13px] text-[var(--text-muted)]">
-                                Paid by {payer?.display_name || "Someone"} • {participantCount || members.length} people • {formatExpenseDate(expense.created_at)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <div className="text-[18px] font-bold tracking-[-0.03em] text-[var(--text)]">
-                            {formatCurrency(totalAmount)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setExpenseToReassign(expense);
-                            }}
-                            className="mt-2 text-[13px] font-semibold text-[var(--accent)] transition hover:opacity-80"
-                          >
-                            Switch payer
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      expense={expense}
+                      members={members}
+                      onOpenExpense={handleOpenExpense}
+                      onSwitchPayer={handleOpenExpensePayerSwitch}
+                    />
+                  ))
+                )}
 
                 {!expenses.length ? (
                   <div className="rounded-2xl bg-[var(--surface-muted)] px-4 py-4 text-[14px] text-[var(--text-muted)]">
@@ -734,7 +808,7 @@ export default function GroupDetailPage({ groupId }) {
       </div>
 
       {toast ? (
-        <div className="fixed right-4 bottom-4 z-40 rounded-full bg-[#1C1917] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_20px_rgba(28,25,23,0.18)]">
+        <div className="fixed right-4 bottom-[calc(var(--safe-bottom)+80px)] z-40 rounded-full bg-[#1C1917] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_20px_rgba(28,25,23,0.18)]">
           {toast}
         </div>
       ) : null}
@@ -792,13 +866,15 @@ export default function GroupDetailPage({ groupId }) {
         />
       ) : null}
 
-      <DeleteGroupDialog
-        isOpen={isDeleteGroupOpen}
-        groupName={group?.name || "This group"}
-        isDeleting={isDeletingGroup}
-        onCancel={() => setIsDeleteGroupOpen(false)}
-        onConfirm={handleDeleteGroup}
-      />
+      {isDeleteGroupOpen ? (
+        <DeleteGroupDialog
+          isOpen={isDeleteGroupOpen}
+          groupName={group?.name || "This group"}
+          isDeleting={isDeletingGroup}
+          onCancel={() => setIsDeleteGroupOpen(false)}
+          onConfirm={handleDeleteGroup}
+        />
+      ) : null}
     </main>
   );
 }

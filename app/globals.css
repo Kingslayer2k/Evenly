@@ -22,6 +22,7 @@
   --nav: rgba(255, 255, 255, 0.82);
   --overlay: rgba(28, 25, 23, 0.38);
   --shadow-soft: 0 8px 20px rgba(28, 25, 23, 0.04);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 [data-theme="dark"] {
@@ -60,12 +61,69 @@
 html,
 body {
   min-height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
+  margin: 0;
   background: var(--bg);
   color: var(--text);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+main,
+section,
+header,
+footer,
+div,
+nav {
+  max-width: 100%;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+button,
+[role="button"],
+a {
+  touch-action: manipulation;
+}
+
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 240px;
+}
+
+.content-auto-compact {
+  content-visibility: auto;
+  contain-intrinsic-size: 120px;
 }
 
 @media (prefers-reduced-motion: reduce) {

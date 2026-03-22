@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import ActivityFeed from "../../components/ActivityFeed";
 import MeStats from "../../components/MeStats";
 import useActivityFeed from "../../hooks/useActivityFeed";
+import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import useNetPosition from "../../hooks/useNetPosition";
 import useTheme from "../../hooks/useTheme";
 import { pageTransition } from "../../lib/animations";
+import { readRuntimeCache, writeRuntimeCache } from "../../lib/runtimeCache";
 import { supabase } from "../../lib/supabase";
 
 function ThemeIcon({ isDark }) {
@@ -40,7 +42,7 @@ function formatCurrency(value) {
 }
 
 function CountUpCurrency({ value }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useLowPerformanceMode();
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ function defaultStats() {
 
 export default function MePage() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useLowPerformanceMode();
   const { isDark, toggleTheme } = useTheme();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -90,6 +92,12 @@ export default function MePage() {
     if (!supabase || !currentUser) {
       setStats(defaultStats());
       return;
+    }
+
+    const cacheKey = `me-stats:${currentUser.id}`;
+    const cachedStats = readRuntimeCache(cacheKey, 20000);
+    if (cachedStats) {
+      setStats(cachedStats);
     }
 
     const membershipsResponse = await supabase.from("group_members").select("*").eq("user_id", currentUser.id);
@@ -151,13 +159,21 @@ export default function MePage() {
       }
     }
 
-    setStats({
+    const nextStats = {
       groupCount: groupIds.length,
       totalSpent,
       peopleCount: uniquePeople.size || peopleCount,
       expenseCount: (expensesResponse.data || []).length,
-    });
+    };
+
+    writeRuntimeCache(cacheKey, nextStats);
+    setStats(nextStats);
   }, [peopleCount]);
+
+  useEffect(() => {
+    router.prefetch("/groups");
+    router.prefetch("/people");
+  }, [router]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -199,9 +215,14 @@ export default function MePage() {
     [],
   );
 
+  const handleLogout = useCallback(async () => {
+    await supabase?.auth.signOut();
+    router.replace("/");
+  }, [router]);
+
   return (
     <motion.main
-      className="min-h-screen bg-[var(--bg)] pb-28"
+      className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[var(--bg)] pb-28"
       initial={reduceMotion ? false : pageTransition.initial}
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
@@ -284,10 +305,7 @@ export default function MePage() {
 
           <button
             type="button"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.replace("/");
-            }}
+            onClick={handleLogout}
             className="mt-2 flex h-[52px] w-full items-center px-5 text-left text-[16px] font-medium text-[var(--danger)] hover:bg-[var(--surface-muted)]"
           >
             Log out

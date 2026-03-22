@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import {
   formatBalance,
   formatCurrencyCompact,
@@ -18,7 +18,7 @@ function FourSquaresIcon() {
 
 const LONG_PRESS_MS = 320;
 
-export default function GroupCard({
+function GroupCard({
   group,
   onClick,
   onPreview,
@@ -78,7 +78,7 @@ export default function GroupCard({
 
   return (
     <div
-      className="group relative w-full overflow-hidden rounded-[28px] border border-white/50 text-left text-white shadow-[0_8px_20px_rgba(28,25,23,0.08),0_20px_40px_rgba(28,25,23,0.12)] transition duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.995]"
+      className="content-auto group relative w-full overflow-hidden rounded-[28px] border border-white/50 text-left text-white shadow-[0_8px_20px_rgba(28,25,23,0.08),0_20px_40px_rgba(28,25,23,0.12)] transition duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.995]"
       style={{ backgroundColor: group.cardColor }}
     >
       <button
@@ -202,3 +202,5 @@ export default function GroupCard({
     </div>
   );
 }
+
+export default memo(GroupCard);

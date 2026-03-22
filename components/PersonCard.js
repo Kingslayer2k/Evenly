@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { memo, useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import useLowPerformanceMode from "../hooks/useLowPerformanceMode";
 import { formatBalance } from "../lib/utils";
 
 const AVATAR_COLORS = ["#8BA888", "#5F7D6A", "#D4A574", "#89CFF0"];
@@ -35,7 +36,7 @@ function formatLastActivity(value) {
 }
 
 function CountUpBalance({ value }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useLowPerformanceMode();
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
@@ -62,7 +63,8 @@ function CountUpBalance({ value }) {
   return <span>{formatBalance(reduceMotion ? value : displayValue)}</span>;
 }
 
-export default function PersonCard({ person, index = 0, onOpen }) {
+function PersonCard({ person, index = 0, onOpen }) {
+  const reduceMotion = useLowPerformanceMode();
   const isPositive = person.balance > 0;
   const isNegative = person.balance < 0;
   const arrow = isPositive ? "↑" : isNegative ? "↓" : "•";
@@ -86,23 +88,31 @@ export default function PersonCard({ person, index = 0, onOpen }) {
         ? "Settle up"
         : "Add expense";
   const statusLabel = isPositive ? "they owe you" : isNegative ? "you owe" : "settled up";
+  const handleOpen = useCallback(() => {
+    onOpen?.(person.id);
+  }, [onOpen, person.id]);
 
   return (
     <motion.button
       type="button"
-      onClick={() => onOpen?.(person)}
-      initial={{ opacity: 0, y: 18 }}
-      animate={{
-        opacity: 1,
-        y: 0,
-        transition: {
-          delay: Math.min(index, 7) * 0.08,
-          duration: 0.42,
-          ease: [0.22, 1, 0.36, 1],
-        },
-      }}
-      whileTap={{ scale: 0.985 }}
-      className="w-full rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+      onClick={handleOpen}
+      initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+      whileInView={
+        reduceMotion
+          ? undefined
+          : {
+              opacity: 1,
+              y: 0,
+              transition: {
+                delay: Math.min(index, 7) * 0.08,
+                duration: 0.42,
+                ease: [0.22, 1, 0.36, 1],
+              },
+            }
+      }
+      viewport={{ once: true, margin: "120px 0px -10% 0px" }}
+      whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+      className="content-auto w-full rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -150,3 +160,5 @@ export default function PersonCard({ person, index = 0, onOpen }) {
     </motion.button>
   );
 }
+
+export default memo(PersonCard);

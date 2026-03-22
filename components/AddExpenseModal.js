@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import ReceiptScanner from "./ReceiptScanner";
+import dynamic from "next/dynamic";
 import { getExpenseEmoji, stripExpenseEmojiPrefix } from "../lib/utils";
+
+const ReceiptScanner = dynamic(() => import("./ReceiptScanner"), {
+  loading: () => null,
+});
 
 const EXPENSE_EMOJIS = ["💸", "🛒", "🍕", "🍽️", "🎟️", "🏠", "🚕", "☕️", "🎉", "🧾"];
 
@@ -204,7 +208,7 @@ export default function AddExpenseModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-8 shadow-[0_-10px_40px_rgba(28,25,23,0.14)]"
+        className="fixed inset-x-0 bottom-0 max-h-[100dvh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-[calc(var(--safe-bottom)+24px)] shadow-[0_-10px_40px_rgba(28,25,23,0.14)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[var(--border)]" />
@@ -220,7 +224,7 @@ export default function AddExpenseModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text)] transition hover:opacity-90"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text)] transition hover:opacity-90"
             aria-label="Close add expense modal"
           >
             ×
@@ -338,10 +342,10 @@ export default function AddExpenseModal({
                           setContextId(context.id);
                           setContextName(label);
                         }}
-                        className={`rounded-full px-3 py-2 text-[13px] font-medium transition ${
-                          active
-                            ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-                            : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-accent)]"
+                    className={`min-h-11 rounded-full px-3 py-2 text-[13px] font-medium transition ${
+                      active
+                        ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                        : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-accent)]"
                         }`}
                       >
                         {label}
@@ -496,14 +500,14 @@ export default function AddExpenseModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full border border-[var(--border)] px-5 py-3 text-[15px] font-semibold text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)]"
+              className="min-h-11 rounded-full border border-[var(--border)] px-5 py-3 text-[15px] font-semibold text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-11 rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Saving..." : "Save expense"}
             </button>
