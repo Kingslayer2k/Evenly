@@ -807,6 +807,7 @@ export default function GroupsPage() {
                       onClick={handleOpenGroup}
                       onPreview={handlePreviewGroup}
                       onColorChange={handleCardColorChange}
+                      onImageChange={handleCardImageChange}
                       collapsed={index > 0}
                       isTopCard={index === 0}
                     />

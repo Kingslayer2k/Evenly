@@ -1,4 +1,5 @@
 import { memo, useRef } from "react";
+import { prepareCardBackgroundImage } from "../lib/cardAppearance";
 import {
   formatBalance,
   formatCurrencyCompact,
@@ -16,6 +17,19 @@ function FourSquaresIcon() {
   );
 }
 
+function ImagePlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5Z" />
+      <path d="m7.5 16 3.4-3.4a1 1 0 0 1 1.4 0L16.5 17" />
+      <path d="m13.5 14 1.1-1.1a1 1 0 0 1 1.4 0l2 2" />
+      <circle cx="9" cy="9" r="1.2" />
+      <path d="M19 3v4" />
+      <path d="M17 5h4" />
+    </svg>
+  );
+}
+
 const LONG_PRESS_MS = 320;
 
 function GroupCard({
@@ -23,10 +37,12 @@ function GroupCard({
   onClick,
   onPreview,
   onColorChange,
+  onImageChange,
   collapsed = false,
   isTopCard = false,
 }) {
   const colorInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const didLongPressRef = useRef(false);
   const standingCopy = getStandingCopy(group.balance);
@@ -51,6 +67,21 @@ function GroupCard({
   function handleColorInputChange(event) {
     event.stopPropagation();
     onColorChange?.(group, event.target.value);
+  }
+
+  async function handleImageInputChange(event) {
+    event.stopPropagation();
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const preparedImage = await prepareCardBackgroundImage(file);
+      await onImageChange?.(group, preparedImage);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      event.target.value = "";
+    }
   }
 
   function handlePointerDown() {
@@ -166,21 +197,44 @@ function GroupCard({
                 <div className="flex flex-col items-end gap-3">
                   {isTopCard ? (
                     <>
-                      <button
-                        type="button"
-                        onPointerDown={stopCardOpen}
-                        onClick={handleColorButtonClick}
-                        className="pointer-events-auto inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
-                        aria-label={`Change ${group.name} card color`}
-                      >
-                        <FourSquaresIcon />
-                        <span>Color</span>
-                      </button>
+                      <div className="pointer-events-auto flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onPointerDown={stopCardOpen}
+                          onClick={handleColorButtonClick}
+                          className="inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
+                          aria-label={`Change ${group.name} card color`}
+                        >
+                          <FourSquaresIcon />
+                          <span>Color</span>
+                        </button>
+                        <button
+                          type="button"
+                          onPointerDown={stopCardOpen}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            imageInputRef.current?.click();
+                          }}
+                          className="inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
+                          aria-label={`Add an image to ${group.name}`}
+                        >
+                          <ImagePlusIcon />
+                          <span>Add image</span>
+                        </button>
+                      </div>
                       <input
                         ref={colorInputRef}
                         type="color"
                         value={group.cardColor}
                         onChange={handleColorInputChange}
+                        className="pointer-events-none sr-only"
+                        tabIndex={-1}
+                      />
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => void handleImageInputChange(event)}
                         className="pointer-events-none sr-only"
                         tabIndex={-1}
                       />

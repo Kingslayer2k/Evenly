@@ -707,18 +707,18 @@ export default function GroupDetailPage({ groupId }) {
                   </div>
                 </div>
 
-                <div className="mt-5 flex gap-3">
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <button
                     type="button"
                     onClick={() => void handleCopyCode()}
-                    className="rounded-full bg-white px-4 py-2 text-[14px] font-semibold text-[#1C1917] transition hover:bg-[#F3F4F6]"
+                    className="flex min-h-11 items-center justify-center rounded-full bg-white px-4 py-2 text-center text-[14px] font-semibold text-[#1C1917] transition hover:bg-[#F3F4F6]"
                   >
                     Copy code
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleShareInvite()}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/45 px-4 py-2 text-[14px] font-semibold text-white transition hover:border-white hover:bg-white/10"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/45 px-4 py-2 text-center text-[14px] font-semibold text-white transition hover:border-white hover:bg-white/10"
                   >
                     <ShareIcon />
                     Share invite
@@ -726,7 +726,7 @@ export default function GroupDetailPage({ groupId }) {
                   <button
                     type="button"
                     onClick={() => setIsLeaveGroupOpen(true)}
-                    className="rounded-full border border-white/45 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-white/10"
+                    className="flex min-h-11 items-center justify-center rounded-full border border-white/45 px-4 py-2 text-center text-[14px] font-semibold text-white transition hover:bg-white/10"
                   >
                     Leave group
                   </button>
@@ -734,7 +734,7 @@ export default function GroupDetailPage({ groupId }) {
                     <button
                       type="button"
                       onClick={() => setIsDeleteGroupOpen(true)}
-                      className="rounded-full border border-white/45 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-white/10"
+                      className="flex min-h-11 items-center justify-center rounded-full border border-white/45 px-4 py-2 text-center text-[14px] font-semibold text-white transition hover:bg-white/10"
                     >
                       Delete group
                     </button>
