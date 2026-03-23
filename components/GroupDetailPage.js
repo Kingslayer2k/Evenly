@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { List } from "react-window";
+import RotationCard from "./RotationCard";
 import SettlementCard from "./SettlementCard";
 import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
 import {
+  completeRotationRecord,
+  createRotationRecord,
   loadUserContacts,
   createSettlementRecord,
   createExpenseRecord,
@@ -15,9 +18,11 @@ import {
   deleteExpenseRecord,
   leaveGroupRecord,
   loadGroupDetailBundle,
+  loadRecentGroupExpenses,
   updateExpensePayerRecord,
 } from "../lib/groupData";
 import {
+  advanceRotationTurn,
   copyToClipboard,
   formatCurrency,
   formatExpenseDate,
@@ -26,12 +31,15 @@ import {
   getExpenseEmoji,
   getExpenseTitle,
   getMemberPreview,
+  getRotationCurrentUserId,
   getStableCardColor,
   getUserSettlementSummary,
   sumGroupTotal,
 } from "../lib/utils";
 
 const AddExpenseModal = dynamic(() => import("./AddExpenseModal"), { loading: () => null });
+const CompleteRotationModal = dynamic(() => import("./CompleteRotationModal"), { loading: () => null });
+const CreateRotationModal = dynamic(() => import("./CreateRotationModal"), { loading: () => null });
 const DeleteGroupDialog = dynamic(() => import("./DeleteGroupDialog"), { loading: () => null });
 const ExpenseDetail = dynamic(() => import("./ExpenseDetail"), { loading: () => null });
 const LeaveGroupDialog = dynamic(() => import("./LeaveGroupDialog"), { loading: () => null });
@@ -158,6 +166,8 @@ export default function GroupDetailPage({ groupId }) {
   const [contexts, setContexts] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [recordedSettlements, setRecordedSettlements] = useState([]);
+  const [rotations, setRotations] = useState([]);
+  const [rotationHistory, setRotationHistory] = useState([]);
   const [cardColor, setCardColor] = useState(getStableCardColor(groupId));
   const [cardImage, setCardImage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -172,6 +182,12 @@ export default function GroupDetailPage({ groupId }) {
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isLeaveGroupOpen, setIsLeaveGroupOpen] = useState(false);
   const [isLeavingGroup, setIsLeavingGroup] = useState(false);
+  const [detailTab, setDetailTab] = useState("expenses");
+  const [isCreateRotationOpen, setIsCreateRotationOpen] = useState(false);
+  const [isCreatingRotation, setIsCreatingRotation] = useState(false);
+  const [rotationToComplete, setRotationToComplete] = useState(null);
+  const [recentRotationExpenses, setRecentRotationExpenses] = useState([]);
+  const [isCompletingRotation, setIsCompletingRotation] = useState(false);
   const [paymentFlow, setPaymentFlow] = useState(null);
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(720);
@@ -212,6 +228,8 @@ export default function GroupDetailPage({ groupId }) {
         setContexts(bundle.contexts);
         setContacts(nextContacts || []);
         setRecordedSettlements(bundle.recordedSettlements || []);
+        setRotations(bundle.rotations || []);
+        setRotationHistory(bundle.rotationHistory || []);
         setCardColor(
           bundle.group?.card_color ||
             bundle.group?.color ||
@@ -334,6 +352,16 @@ export default function GroupDetailPage({ groupId }) {
         { event: "*", schema: "public", table: "expenses", filter: `group_id=eq.${groupId}` },
         () => scheduleRefresh(user),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rotations", filter: `group_id=eq.${groupId}` },
+        () => scheduleRefresh(user),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rotation_history" },
+        () => scheduleRefresh(user),
+      )
       .subscribe();
 
     return () => {
@@ -356,6 +384,28 @@ export default function GroupDetailPage({ groupId }) {
     () => Math.min(Math.max(viewportHeight - 360, 360), expenses.length * 110),
     [expenses.length, viewportHeight],
   );
+  const rotationsWithPeople = useMemo(() => {
+    return rotations.map((rotation) => {
+      const currentUserId = getRotationCurrentUserId(rotation);
+      const currentMember = members.find((member) => member.user_id === currentUserId) || null;
+      return {
+        ...rotation,
+        current_turn_user_id: currentUserId,
+        current_turn_name: currentMember?.display_name || "Someone",
+      };
+    });
+  }, [members, rotations]);
+  const groupRotationHistory = useMemo(() => {
+    return (rotationHistory || []).slice(0, 5).map((entry) => {
+      const rotation = rotations.find((item) => item.id === entry.rotation_id);
+      const completer = members.find((member) => member.user_id === entry.completed_by);
+      return {
+        ...entry,
+        rotationName: rotation?.name || "Rotation",
+        completedByName: completer?.display_name || "Someone",
+      };
+    });
+  }, [members, rotationHistory, rotations]);
 
   const getCounterpartyForSettlement = useCallback(
     (item, direction) => {
@@ -372,11 +422,13 @@ export default function GroupDetailPage({ groupId }) {
       paidBy,
       participants,
       splitType,
+      splitMethod,
       shares,
       contactParticipants,
       contactShares,
       contextId,
       contextName,
+      splitDetails,
     }) => {
       if (!supabase || !user) {
         return { ok: false, message: "Sign in first so we can save the expense." };
@@ -390,11 +442,13 @@ export default function GroupDetailPage({ groupId }) {
           paidBy,
           participants,
           splitType,
+          splitMethod,
           shares,
           contactParticipants,
           contactShares,
           contextId,
           contextName,
+          splitDetails,
         });
 
         await loadDetail(user, { refresh: true });
@@ -409,6 +463,35 @@ export default function GroupDetailPage({ groupId }) {
       }
     },
     [groupId, loadDetail, showToast, user],
+  );
+
+  const handleCreateRotation = useCallback(
+    async ({ name, frequency, people, currentTurnIndex }) => {
+      if (!supabase || !group?.id) {
+        return { ok: false, message: "We need the group loaded first." };
+      }
+
+      setIsCreatingRotation(true);
+
+      try {
+        const rotation = await createRotationRecord(supabase, {
+          groupId: group.id,
+          name,
+          frequency,
+          people,
+          currentTurnIndex,
+        });
+        setRotations((previous) => [...previous, rotation]);
+        showToast("Rotation created");
+        return { ok: true };
+      } catch (error) {
+        console.error(error);
+        return { ok: false, message: error.message || "Could not create the rotation." };
+      } finally {
+        setIsCreatingRotation(false);
+      }
+    },
+    [group?.id, showToast],
   );
 
   const handleReassignPayer = useCallback(
@@ -512,6 +595,17 @@ export default function GroupDetailPage({ groupId }) {
     setExpenseToReassign(expense);
   }, []);
 
+  const handleOpenRotationComplete = useCallback(async (rotation) => {
+    setRotationToComplete(rotation);
+    try {
+      const recentExpenses = await loadRecentGroupExpenses(supabase, groupId, 6);
+      setRecentRotationExpenses(recentExpenses);
+    } catch (error) {
+      console.error(error);
+      setRecentRotationExpenses([]);
+    }
+  }, [groupId]);
+
   const handleConfirmSettlement = useCallback(
     async ({ settlementItem, method, direction, counterparty }) => {
       if (!supabase || !user) {
@@ -553,6 +647,70 @@ export default function GroupDetailPage({ groupId }) {
       }
     },
     [group?.name, groupId, loadDetail, showToast, user],
+  );
+
+  const handleCompleteRotation = useCallback(
+    async ({ linkedExpenseId, note }) => {
+      if (!supabase || !rotationToComplete || !user?.id) {
+        return;
+      }
+
+      const optimisticRotation = advanceRotationTurn(rotationToComplete);
+      const previousRotations = rotations;
+      const previousHistory = rotationHistory;
+
+      setIsCompletingRotation(true);
+      setRotations((current) =>
+        current.map((rotation) => (rotation.id === rotationToComplete.id ? optimisticRotation : rotation)),
+      );
+      setRotationHistory((current) => [
+        {
+          id: `temp-${Date.now()}`,
+          rotation_id: rotationToComplete.id,
+          completed_by: user.id,
+          completed_at: new Date().toISOString(),
+          linked_expense_id: linkedExpenseId,
+          note,
+        },
+        ...current,
+      ]);
+
+      try {
+        const result = await completeRotationRecord(supabase, rotationToComplete, {
+          completedBy: user.id,
+          linkedExpenseId,
+          note,
+        });
+        setRotations((current) =>
+          current.map((rotation) => (rotation.id === rotationToComplete.id ? result.rotation : rotation)),
+        );
+        if (result.history) {
+          setRotationHistory((current) => [
+            result.history,
+            ...current.filter((entry) => !String(entry.id).startsWith("temp-")),
+          ]);
+        }
+        setRotationToComplete(null);
+        setRecentRotationExpenses([]);
+        showToast("Turn complete");
+        import("canvas-confetti")
+          .then((module) => module.default?.({
+            particleCount: 70,
+            spread: 65,
+            origin: { y: 0.65 },
+            colors: ["#5F7D6A", "#8BA888", "#C0CFB2", "#D4A574"],
+          }))
+          .catch(() => {});
+      } catch (error) {
+        console.error(error);
+        setRotations(previousRotations);
+        setRotationHistory(previousHistory);
+        showToast(error.message || "Could not complete the rotation yet");
+      } finally {
+        setIsCompletingRotation(false);
+      }
+    },
+    [rotationHistory, rotationToComplete, rotations, showToast, user?.id],
   );
 
   async function handleCopyCode() {
@@ -770,61 +928,143 @@ export default function GroupDetailPage({ groupId }) {
               </div>
             </section>
 
-            <SettlementCard summary={summary} onAction={handleOpenSettlement} />
+            <div className="mt-6 inline-flex rounded-full bg-[var(--surface-muted)] p-1">
+              {["expenses", "rotations"].map((tab) => {
+                const active = detailTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setDetailTab(tab)}
+                    className={`min-h-11 rounded-full px-4 text-[14px] font-semibold capitalize transition ${
+                      active
+                        ? "bg-[var(--surface)] text-[var(--text)] shadow-[0_2px_6px_rgba(28,25,23,0.08)]"
+                        : "text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
 
-            <section className="mt-6 rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
+            {detailTab === "expenses" ? (
+              <>
+                <SettlementCard summary={summary} onAction={handleOpenSettlement} />
+
+                <section className="mt-6 rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Recent expenses</h2>
+                      <p className="mt-1 text-[14px] text-[var(--text-muted)]">
+                        Tap in new charges and switch the payer if the wrong person grabbed it.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsExpenseModalOpen(true)}
+                      className="rounded-full bg-[var(--accent)] px-4 py-2 text-[14px] font-semibold text-white transition hover:opacity-90"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {shouldVirtualizeExpenses ? (
+                      <List
+                        defaultHeight={expenseListHeight}
+                        rowCount={expenses.length}
+                        rowHeight={110}
+                        rowComponent={ExpenseListRow}
+                        rowProps={{
+                          expenses,
+                          members,
+                          onOpenExpense: handleOpenExpense,
+                          onSwitchPayer: handleOpenExpensePayerSwitch,
+                        }}
+                        overscanCount={4}
+                        style={{ height: expenseListHeight, width: "100%" }}
+                      />
+                    ) : (
+                      expenses.map((expense) => (
+                        <ExpenseRow
+                          key={expense.id}
+                          expense={expense}
+                          members={members}
+                          onOpenExpense={handleOpenExpense}
+                          onSwitchPayer={handleOpenExpensePayerSwitch}
+                        />
+                      ))
+                    )}
+
+                    {!expenses.length ? (
+                      <div className="rounded-2xl bg-[var(--surface-muted)] px-4 py-4 text-[14px] text-[var(--text-muted)]">
+                        No expenses yet. Add the first one and the live balances will kick in.
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              </>
+            ) : null}
+
+            {detailTab === "rotations" ? (
+              <section className="mt-6 rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Recent expenses</h2>
+                  <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Rotations</h2>
                   <p className="mt-1 text-[14px] text-[var(--text-muted)]">
-                    Tap in new charges and switch the payer if the wrong person grabbed it.
+                    Keep groceries, trash, and shared chores moving without awkward check-ins.
                   </p>
                 </div>
-
                 <button
                   type="button"
-                  onClick={() => setIsExpenseModalOpen(true)}
+                  onClick={() => setIsCreateRotationOpen(true)}
                   className="rounded-full bg-[var(--accent)] px-4 py-2 text-[14px] font-semibold text-white transition hover:opacity-90"
                 >
-                  Add
+                  Create
                 </button>
               </div>
 
               <div className="mt-4 space-y-3">
-                {shouldVirtualizeExpenses ? (
-                  <List
-                    defaultHeight={expenseListHeight}
-                    rowCount={expenses.length}
-                    rowHeight={110}
-                    rowComponent={ExpenseListRow}
-                    rowProps={{
-                      expenses,
-                      members,
-                      onOpenExpense: handleOpenExpense,
-                      onSwitchPayer: handleOpenExpensePayerSwitch,
-                    }}
-                    overscanCount={4}
-                    style={{ height: expenseListHeight, width: "100%" }}
-                  />
-                ) : (
-                  expenses.map((expense) => (
-                    <ExpenseRow
-                      key={expense.id}
-                      expense={expense}
-                      members={members}
-                      onOpenExpense={handleOpenExpense}
-                      onSwitchPayer={handleOpenExpensePayerSwitch}
+                {rotationsWithPeople.length ? (
+                  rotationsWithPeople.map((rotation) => (
+                    <RotationCard
+                      key={rotation.id}
+                      rotation={rotation}
+                      highlight={rotation.current_turn_user_id === user?.id}
+                      onMarkComplete={handleOpenRotationComplete}
                     />
                   ))
-                )}
-
-                {!expenses.length ? (
+                ) : (
                   <div className="rounded-2xl bg-[var(--surface-muted)] px-4 py-4 text-[14px] text-[var(--text-muted)]">
-                    No expenses yet. Add the first one and the live balances will kick in.
+                    No rotations yet. Start one for groceries, trash, or cleaning and we&apos;ll keep the order moving.
                   </div>
-                ) : null}
+                )}
               </div>
-            </section>
+
+              {groupRotationHistory.length ? (
+                <div className="mt-5 rounded-[22px] border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                  <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                    Recent rotation history
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {groupRotationHistory.map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between gap-4 text-[14px]">
+                        <div>
+                          <div className="font-semibold text-[var(--text)]">{entry.rotationName}</div>
+                          <div className="mt-1 text-[var(--text-muted)]">
+                            {entry.completedByName} completed it
+                          </div>
+                        </div>
+                        <div className="text-[var(--text-muted)]">{formatExpenseDate(entry.completed_at)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              </section>
+            ) : null}
           </>
         )}
 
@@ -851,6 +1091,7 @@ export default function GroupDetailPage({ groupId }) {
           contexts={contexts}
           contacts={contacts}
           initialPayerId={membership?.id}
+          rotations={rotations}
         />
       ) : null}
 
@@ -911,6 +1152,32 @@ export default function GroupDetailPage({ groupId }) {
           isLeaving={isLeavingGroup}
           onCancel={() => setIsLeaveGroupOpen(false)}
           onConfirm={handleLeaveGroup}
+        />
+      ) : null}
+
+      {isCreateRotationOpen ? (
+        <CreateRotationModal
+          key={`rotation-create-${groupId}-${members.length}`}
+          isOpen={isCreateRotationOpen}
+          onClose={() => setIsCreateRotationOpen(false)}
+          onCreate={handleCreateRotation}
+          members={members}
+          isSubmitting={isCreatingRotation}
+        />
+      ) : null}
+
+      {rotationToComplete ? (
+        <CompleteRotationModal
+          key={`rotation-complete-${rotationToComplete.id}`}
+          isOpen={Boolean(rotationToComplete)}
+          rotation={rotationToComplete}
+          recentExpenses={recentRotationExpenses}
+          onClose={() => {
+            setRotationToComplete(null);
+            setRecentRotationExpenses([]);
+          }}
+          onConfirm={handleCompleteRotation}
+          isSubmitting={isCompletingRotation}
         />
       ) : null}
     </main>

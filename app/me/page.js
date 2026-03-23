@@ -2,16 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import ActivityFeed from "../../components/ActivityFeed";
 import MeStats from "../../components/MeStats";
+import RotationCard from "../../components/RotationCard";
 import useActivityFeed from "../../hooks/useActivityFeed";
 import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import useNetPosition from "../../hooks/useNetPosition";
 import useTheme from "../../hooks/useTheme";
 import { pageTransition } from "../../lib/animations";
 import { readRuntimeCache, writeRuntimeCache } from "../../lib/runtimeCache";
+import { completeRotationRecord, loadRecentGroupExpenses, loadUserTurnRotations } from "../../lib/groupData";
 import { supabase } from "../../lib/supabase";
+
+const CompleteRotationModal = dynamic(() => import("../../components/CompleteRotationModal"), {
+  loading: () => null,
+});
 
 function ThemeIcon({ isDark }) {
   return (
@@ -85,6 +92,10 @@ export default function MePage() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState(defaultStats());
+  const [turnRotations, setTurnRotations] = useState([]);
+  const [rotationToComplete, setRotationToComplete] = useState(null);
+  const [recentRotationExpenses, setRecentRotationExpenses] = useState([]);
+  const [isCompletingRotation, setIsCompletingRotation] = useState(false);
   const { netPosition, peopleCount } = useNetPosition(user);
   const activityFeed = useActivityFeed(user, 8);
 
@@ -177,10 +188,35 @@ export default function MePage() {
     setStats(nextStats);
   }, [peopleCount]);
 
+  const loadTurnRotations = useCallback(async (currentUser) => {
+    if (!supabase || !currentUser) {
+      setTurnRotations([]);
+      return;
+    }
+
+    try {
+      const nextRotations = await loadUserTurnRotations(supabase, currentUser);
+      setTurnRotations(nextRotations);
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
   useEffect(() => {
     router.prefetch("/groups");
     router.prefetch("/people");
   }, [router]);
+
+  const handleOpenRotationComplete = useCallback(async (rotation) => {
+    setRotationToComplete(rotation);
+    try {
+      const recentExpenses = await loadRecentGroupExpenses(supabase, rotation.group_id, 6);
+      setRecentRotationExpenses(recentExpenses);
+    } catch (error) {
+      console.error(error);
+      setRecentRotationExpenses([]);
+    }
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -193,7 +229,7 @@ export default function MePage() {
       const nextUser = data.session?.user || null;
       setUser(nextUser);
       if (nextUser) {
-        await loadStats(nextUser);
+        await Promise.all([loadStats(nextUser), loadTurnRotations(nextUser)]);
       }
     }
 
@@ -203,7 +239,7 @@ export default function MePage() {
       const nextUser = session?.user || null;
       setUser(nextUser);
       if (nextUser) {
-        void loadStats(nextUser);
+        void Promise.all([loadStats(nextUser), loadTurnRotations(nextUser)]);
       }
     });
 
@@ -211,7 +247,7 @@ export default function MePage() {
       isMounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [loadStats]);
+  }, [loadStats, loadTurnRotations]);
 
   const settingsRows = useMemo(
     () => [
@@ -226,6 +262,40 @@ export default function MePage() {
     await supabase?.auth.signOut();
     router.replace("/");
   }, [router]);
+
+  const handleCompleteRotation = useCallback(async ({ linkedExpenseId, note }) => {
+    if (!supabase || !rotationToComplete || !user?.id) {
+      return;
+    }
+
+    const previousRotations = turnRotations;
+    setIsCompletingRotation(true);
+    setTurnRotations((current) => current.filter((rotation) => rotation.id !== rotationToComplete.id));
+
+    try {
+      await completeRotationRecord(supabase, rotationToComplete, {
+        completedBy: user.id,
+        linkedExpenseId,
+        note,
+      });
+      setRotationToComplete(null);
+      setRecentRotationExpenses([]);
+      await loadTurnRotations(user);
+      import("canvas-confetti")
+        .then((module) => module.default?.({
+          particleCount: 70,
+          spread: 60,
+          origin: { y: 0.65 },
+          colors: ["#5F7D6A", "#8BA888", "#C0CFB2", "#D4A574"],
+        }))
+        .catch(() => {});
+    } catch (error) {
+      console.error(error);
+      setTurnRotations(previousRotations);
+    } finally {
+      setIsCompletingRotation(false);
+    }
+  }, [loadTurnRotations, rotationToComplete, turnRotations, user]);
 
   return (
     <motion.main
@@ -270,6 +340,44 @@ export default function MePage() {
         <div className="mt-4">
           <MeStats stats={stats} />
         </div>
+
+        <section className="mt-4 rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                Your turn
+              </div>
+              <div className="mt-2 text-[20px] font-semibold tracking-[-0.03em] text-[var(--text)]">
+                Rotations to knock out
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/groups")}
+              className="rounded-full bg-[var(--surface-muted)] px-4 py-2 text-[14px] font-semibold text-[var(--accent-strong)]"
+            >
+              Open groups
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {turnRotations.length ? (
+              turnRotations.map((rotation) => (
+                <RotationCard
+                  key={rotation.id}
+                  rotation={rotation}
+                  highlight
+                  onMarkComplete={handleOpenRotationComplete}
+                  showGroupName
+                />
+              ))
+            ) : (
+              <div className="rounded-[18px] bg-[var(--surface-muted)] px-4 py-4 text-[14px] text-[var(--text-muted)]">
+                Nothing on your plate right now. When a rotation lands on you, it will show up here.
+              </div>
+            )}
+          </div>
+        </section>
 
         <div className="mt-4">
           <ActivityFeed
@@ -319,6 +427,21 @@ export default function MePage() {
           </button>
         </section>
       </div>
+
+      {rotationToComplete ? (
+        <CompleteRotationModal
+          key={`me-rotation-${rotationToComplete.id}`}
+          isOpen={Boolean(rotationToComplete)}
+          rotation={rotationToComplete}
+          recentExpenses={recentRotationExpenses}
+          onClose={() => {
+            setRotationToComplete(null);
+            setRecentRotationExpenses([]);
+          }}
+          onConfirm={handleCompleteRotation}
+          isSubmitting={isCompletingRotation}
+        />
+      ) : null}
     </motion.main>
   );
 }

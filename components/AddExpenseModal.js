@@ -7,6 +7,9 @@ import { getExpenseEmoji, stripExpenseEmojiPrefix } from "../lib/utils";
 const ReceiptScanner = dynamic(() => import("./ReceiptScanner"), {
   loading: () => null,
 });
+const FairSplitModal = dynamic(() => import("./FairSplitModal"), {
+  loading: () => null,
+});
 
 const EXPENSE_EMOJIS = ["💸", "🛒", "🍕", "🍽️", "🎟️", "🏠", "🚕", "☕️", "🎉", "🧾"];
 
@@ -24,6 +27,7 @@ export default function AddExpenseModal({
   contexts,
   contacts = [],
   initialPayerId,
+  rotations = [],
 }) {
   const memberIds = (members || []).map((member) => member.id);
   const contactIds = (contacts || []).map((contact) => contact.id);
@@ -32,6 +36,7 @@ export default function AddExpenseModal({
   const [amount, setAmount] = useState("");
   const [paidBy, setPaidBy] = useState(initialPayerId || memberIds[0] || "");
   const [splitMode, setSplitMode] = useState("equal");
+  const [splitMethod, setSplitMethod] = useState("even");
   const [selectedParticipants, setSelectedParticipants] = useState(memberIds);
   const [selectedContactIds, setSelectedContactIds] = useState([]);
   const [customAmounts, setCustomAmounts] = useState(
@@ -50,6 +55,8 @@ export default function AddExpenseModal({
   const [contextName, setContextName] = useState(contexts?.[0]?.name || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isFairSplitOpen, setIsFairSplitOpen] = useState(false);
+  const [fairSplitDetails, setFairSplitDetails] = useState(null);
   const [error, setError] = useState("");
 
   const amountCents = useMemo(() => toCents(amount), [amount]);
@@ -70,9 +77,23 @@ export default function AddExpenseModal({
     return selectedContactIds.reduce((sum, contactId) => sum + toCents(customContactAmounts[contactId]), 0);
   }, [customContactAmounts, selectedContactIds]);
 
+  const matchedRotation = useMemo(() => {
+    const normalizedTitle = stripExpenseEmojiPrefix(title).trim().toLowerCase();
+    if (!normalizedTitle) return null;
+
+    return (rotations || []).find((rotation) => {
+      const normalizedRotation = String(rotation?.name || "").trim().toLowerCase();
+      return normalizedRotation && (normalizedTitle.includes(normalizedRotation) || normalizedRotation.includes(normalizedTitle));
+    }) || null;
+  }, [rotations, title]);
+
   if (!isOpen) return null;
 
   function toggleParticipant(memberId) {
+    if (splitMethod === "fair") {
+      setSplitMethod("custom");
+      setFairSplitDetails(null);
+    }
     setSelectedParticipants((previous) => {
       if (previous.includes(memberId)) {
         return previous.filter((id) => id !== memberId);
@@ -82,6 +103,10 @@ export default function AddExpenseModal({
   }
 
   function toggleContact(contactId) {
+    if (splitMethod === "fair") {
+      setSplitMethod("custom");
+      setFairSplitDetails(null);
+    }
     setSelectedContactIds((previous) => {
       if (previous.includes(contactId)) {
         return previous.filter((id) => id !== contactId);
@@ -123,8 +148,41 @@ export default function AddExpenseModal({
     let shares = null;
     let contactShares = {};
     let effectiveSplitType = splitMode;
+    let effectiveSplitMethod = splitMethod;
+    let effectiveSplitDetails = fairSplitDetails ? { fair: fairSplitDetails } : {};
 
-    if (splitMode === "custom") {
+    if (matchedRotation?.id) {
+      effectiveSplitDetails = {
+        ...effectiveSplitDetails,
+        rotation: {
+          id: matchedRotation.id,
+          name: matchedRotation.name,
+        },
+      };
+    }
+
+    if (splitMethod === "fair" && fairSplitDetails) {
+      effectiveSplitType = "custom";
+      effectiveSplitMethod = "fair";
+      shares = {};
+      contactShares = {};
+
+      fairSplitDetails.calculations.forEach((entry) => {
+        if (entry.kind === "contact") {
+          contactShares[entry.id] = Number(entry.totalCents || 0);
+        } else {
+          shares[entry.id] = Number(entry.totalCents || 0);
+        }
+      });
+
+      const fairTotal = Object.values(shares).reduce((sum, value) => sum + Number(value || 0), 0)
+        + Object.values(contactShares).reduce((sum, value) => sum + Number(value || 0), 0);
+
+      if (fairTotal !== amountCents) {
+        setError("The fair split needs to match the expense total.");
+        return;
+      }
+    } else if (splitMode === "custom") {
       if (customTotalCents + customContactTotalCents !== amountCents) {
         setError("Custom shares need to add up to the full amount.");
         return;
@@ -174,11 +232,13 @@ export default function AddExpenseModal({
       paidBy,
       participants: selectedParticipants,
       splitType: effectiveSplitType,
+      splitMethod: effectiveSplitMethod,
       shares,
       contactParticipants: selectedContactIds,
       contactShares,
       contextId: contextId || null,
       contextName: contextName.trim() || null,
+      splitDetails: Object.keys(effectiveSplitDetails).length ? effectiveSplitDetails : null,
     });
 
     if (!result?.ok) {
@@ -293,7 +353,13 @@ export default function AddExpenseModal({
                 step="0.01"
                 min="0"
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) => {
+                  setAmount(event.target.value);
+                  if (splitMethod === "fair") {
+                    setSplitMethod("custom");
+                    setFairSplitDetails(null);
+                  }
+                }}
                 placeholder="0.00"
                 className="ml-2 w-full bg-transparent text-[16px] text-[var(--text)] outline-none"
               />
@@ -368,7 +434,11 @@ export default function AddExpenseModal({
                   <button
                     key={mode}
                     type="button"
-                    onClick={() => setSplitMode(mode)}
+                    onClick={() => {
+                      setSplitMode(mode);
+                      setSplitMethod(mode);
+                      setFairSplitDetails(null);
+                    }}
                     className={`rounded-full px-4 py-2 text-[14px] font-semibold capitalize transition ${
                       active
                         ? "bg-[var(--surface)] text-[var(--text)] shadow-[0_2px_6px_rgba(28,25,23,0.08)]"
@@ -380,6 +450,17 @@ export default function AddExpenseModal({
                 );
               })}
             </div>
+            <button
+              type="button"
+              onClick={() => setIsFairSplitOpen(true)}
+              className={`mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-[14px] font-semibold transition ${
+                splitMethod === "fair"
+                  ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                  : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-accent)]"
+              }`}
+            >
+              Split by items
+            </button>
           </div>
 
           <div>
@@ -482,7 +563,11 @@ export default function AddExpenseModal({
             </div>
           ) : null}
 
-          {splitMode === "equal" ? (
+          {splitMethod === "fair" && fairSplitDetails ? (
+            <div className="rounded-2xl bg-[var(--surface-accent)] px-4 py-3 text-[14px] text-[var(--accent-strong)]">
+              Fair split ready: items plus shared costs are balanced across {(fairSplitDetails.calculations || []).length} people.
+            </div>
+          ) : splitMode === "equal" ? (
             <div className="rounded-2xl bg-[var(--surface-accent)] px-4 py-3 text-[14px] text-[var(--accent-strong)]">
               {selectedMembers.length || selectedContacts.length
                 ? `Each person covers about $${(amountCents / 100 / (selectedMembers.length + selectedContacts.length) || 0).toFixed(2)}.`
@@ -493,6 +578,12 @@ export default function AddExpenseModal({
               Custom total: ${((customTotalCents + customContactTotalCents) / 100).toFixed(2)} of ${(amountCents / 100).toFixed(2)}
             </div>
           )}
+
+          {matchedRotation ? (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-[14px] text-[var(--text-muted)]">
+              Matches the <span className="font-semibold text-[var(--text)]">{matchedRotation.name}</span> rotation. We&apos;ll carry that link into the saved expense.
+            </div>
+          ) : null}
 
           {error ? <p className="text-[14px] font-medium text-[var(--danger)]">{error}</p> : null}
 
@@ -528,6 +619,46 @@ export default function AddExpenseModal({
               setTitle(stripExpenseEmojiPrefix(description));
             }
             setError("");
+          }}
+        />
+      ) : null}
+
+      {isFairSplitOpen ? (
+        <FairSplitModal
+          key={`fair-${amountCents}-${selectedParticipants.join("-")}-${selectedContactIds.join("-")}`}
+          isOpen={isFairSplitOpen}
+          onClose={() => setIsFairSplitOpen(false)}
+          totalCents={amountCents}
+          members={members}
+          contacts={contacts}
+          selectedParticipantIds={selectedParticipants}
+          selectedContactIds={selectedContactIds}
+          initialDetails={fairSplitDetails}
+          onApply={(details) => {
+            const nextCustomAmounts = { ...customAmounts };
+            const nextCustomContactAmounts = { ...customContactAmounts };
+            const nextParticipantIds = [];
+            const nextContactIds = [];
+
+            details.calculations.forEach((entry) => {
+              if (entry.kind === "contact") {
+                nextCustomContactAmounts[entry.id] = (entry.totalCents / 100).toFixed(2);
+                nextContactIds.push(entry.id);
+              } else {
+                nextCustomAmounts[entry.id] = (entry.totalCents / 100).toFixed(2);
+                nextParticipantIds.push(entry.id);
+              }
+            });
+
+            setCustomAmounts(nextCustomAmounts);
+            setCustomContactAmounts(nextCustomContactAmounts);
+            setSelectedParticipants(nextParticipantIds);
+            setSelectedContactIds(nextContactIds);
+            setSplitMode("custom");
+            setSplitMethod("fair");
+            setFairSplitDetails(details);
+            setError("");
+            setIsFairSplitOpen(false);
           }}
         />
       ) : null}

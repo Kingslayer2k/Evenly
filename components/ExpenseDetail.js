@@ -83,6 +83,7 @@ export default function ExpenseDetail({
   }, [expense, members]);
 
   const shares = useMemo(() => computeExpenseShares(expense), [expense]);
+  const fairBreakdown = useMemo(() => expense?.split_details?.fair || null, [expense]);
   const totalAmount = useMemo(
     () => (Number(expense?.amount_cents || 0) + Number(expense?.round_up_cents || 0)) / 100,
     [expense],
@@ -159,8 +160,35 @@ export default function ExpenseDetail({
             </div>
 
             <p className="mt-4 text-[16px] font-semibold text-[var(--text-muted)]">
-              {isEqualSplit ? `${formatCurrency(equalAmount)} each` : "Custom split"}
+              {expense?.split_method === "fair"
+                ? "Fair split by items"
+                : isEqualSplit
+                  ? `${formatCurrency(equalAmount)} each`
+                  : "Custom split"}
             </p>
+
+            {fairBreakdown?.calculations?.length ? (
+              <div className="mt-5 rounded-[18px] bg-[var(--surface)] px-4 py-4 shadow-[0_4px_12px_rgba(28,25,23,0.04)]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                  Fair breakdown
+                </div>
+                <div className="mt-3 space-y-3">
+                  {fairBreakdown.calculations.map((entry) => (
+                    <div key={entry.id} className="flex items-center justify-between gap-4 text-[14px]">
+                      <div>
+                        <div className="font-semibold text-[var(--text)]">{entry.label}</div>
+                        <div className="mt-1 text-[var(--text-muted)]">
+                          Items {formatCurrency(Number(entry.itemsCents || 0) / 100)} + shared {formatCurrency(Number(entry.sharedShareCents || 0) / 100)}
+                        </div>
+                      </div>
+                      <div className="font-semibold text-[var(--text)]">
+                        {formatCurrency(Number(entry.totalCents || 0) / 100)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
