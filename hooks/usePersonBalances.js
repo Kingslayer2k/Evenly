@@ -66,7 +66,7 @@ export default function usePersonBalances(user) {
           supabase.from("groups").select("id, name").in("id", groupIds),
           supabase
             .from("group_members")
-            .select("id, group_id, user_id, display_name, created_at")
+            .select("id, group_id, user_id, display_name, created_at, venmo_username, cash_app_tag, zelle_phone, phone")
             .in("group_id", groupIds),
           supabase
             .from("expenses")
@@ -149,7 +149,11 @@ export default function usePersonBalances(user) {
             balanceCents: 0,
             lastActivityAt: "",
             sharedGroupsMap: new Map(),
+            groupBreakdownMap: new Map(),
             isOnEvenly: Boolean(member),
+            venmoUsername: member?.venmo_username || "",
+            cashTag: member?.cash_app_tag || "",
+            phone: member?.phone || member?.zelle_phone || "",
           };
           peopleMap.set(targetUserId, next);
           return next;
@@ -194,7 +198,9 @@ export default function usePersonBalances(user) {
               const participantMember = memberById.get(participantId);
               const person = ensurePerson(participantMember?.user_id, participantMember?.display_name);
               if (!person) continue;
-              person.balanceCents += Number(shares[participantId] || 0);
+              const delta = Number(shares[participantId] || 0);
+              person.balanceCents += delta;
+              person.groupBreakdownMap.set(expense.group_id, (person.groupBreakdownMap.get(expense.group_id) || 0) + delta);
               person.lastActivityAt = maxDate(person.lastActivityAt, expense.created_at);
             }
             continue;
@@ -205,6 +211,7 @@ export default function usePersonBalances(user) {
             const person = ensurePerson(payerMember?.user_id, payerMember?.display_name);
             if (!person) continue;
             person.balanceCents -= currentShare;
+            person.groupBreakdownMap.set(expense.group_id, (person.groupBreakdownMap.get(expense.group_id) || 0) - currentShare);
             person.lastActivityAt = maxDate(person.lastActivityAt, expense.created_at);
           }
         }
@@ -216,7 +223,11 @@ export default function usePersonBalances(user) {
               memberByUserId.get(settlement.to_user_id)?.display_name || "Someone",
             );
             if (!person) continue;
-            person.balanceCents += toCentsFromSettlement(settlement);
+            const delta = toCentsFromSettlement(settlement);
+            person.balanceCents += delta;
+            if (settlement.group_id) {
+              person.groupBreakdownMap.set(settlement.group_id, (person.groupBreakdownMap.get(settlement.group_id) || 0) + delta);
+            }
             person.lastActivityAt = maxDate(person.lastActivityAt, settlement.settled_at || settlement.created_at);
           }
 
@@ -226,7 +237,11 @@ export default function usePersonBalances(user) {
               memberByUserId.get(settlement.from_user_id)?.display_name || "Someone",
             );
             if (!person) continue;
-            person.balanceCents -= toCentsFromSettlement(settlement);
+            const delta = toCentsFromSettlement(settlement);
+            person.balanceCents -= delta;
+            if (settlement.group_id) {
+              person.groupBreakdownMap.set(settlement.group_id, (person.groupBreakdownMap.get(settlement.group_id) || 0) - delta);
+            }
             person.lastActivityAt = maxDate(person.lastActivityAt, settlement.settled_at || settlement.created_at);
           }
         }
@@ -258,6 +273,13 @@ export default function usePersonBalances(user) {
             balance: person.balanceCents / 100,
             sharedGroups: [...person.sharedGroupsMap.values()],
             sharedGroupCount: person.sharedGroupsMap.size,
+            groupBreakdowns: [...person.groupBreakdownMap.entries()]
+              .map(([groupId, balanceCents]) => ({
+                groupId,
+                groupName: groupNameById.get(groupId) || "Shared group",
+                balanceCents,
+              }))
+              .filter((b) => b.balanceCents !== 0),
           }))
           .sort((left, right) => {
             const balanceDiff = Math.abs(right.balanceCents) - Math.abs(left.balanceCents);

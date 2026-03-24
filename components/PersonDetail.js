@@ -12,9 +12,10 @@ function BackIcon() {
   );
 }
 
-export default function PersonDetail({ person, activityItems }) {
+export default function PersonDetail({ person, activityItems, onSettleUp, isSettling = false }) {
   const router = useRouter();
   const primaryGroup = person?.sharedGroups?.[0] || null;
+  const canSettle = person?.balance !== 0;
 
   return (
     <main className="min-h-screen bg-[var(--bg)] pb-24">
@@ -88,10 +89,15 @@ export default function PersonDetail({ person, activityItems }) {
         <div className="mx-auto flex w-full max-w-[460px] gap-3">
           <button
             type="button"
-            onClick={() => primaryGroup && router.push(`/groups/${primaryGroup.id}`)}
-            className="min-h-12 flex-1 rounded-[12px] bg-[var(--accent)] text-[15px] font-medium text-white transition hover:opacity-90"
+            onClick={() => canSettle && onSettleUp?.()}
+            disabled={!canSettle || isSettling}
+            className={`min-h-12 flex-1 rounded-[12px] text-[15px] font-medium text-white transition ${
+              canSettle
+                ? "bg-[var(--accent)] hover:opacity-90 active:scale-[0.99]"
+                : "cursor-default bg-[var(--accent)] opacity-40"
+            } disabled:opacity-40`}
           >
-            Settle up
+            {isSettling ? "Settling..." : canSettle ? "Settle up" : "All settled"}
           </button>
           <button
             type="button"

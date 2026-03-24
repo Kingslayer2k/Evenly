@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "framer-motion";
 import PersonDetail from "./PersonDetail";
 import useActivityFeed from "../hooks/useActivityFeed";
 import usePersonBalances from "../hooks/usePersonBalances";
+import { createNetSettlement } from "../lib/groupData";
 import { pageTransition } from "../lib/animations";
 import { supabase } from "../lib/supabase";
+
+const PaymentModal = dynamic(() => import("./PaymentModal"), { loading: () => null });
 
 export default function PersonDetailPage({ personId }) {
   const reduceMotion = useReducedMotion();
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
   const { people, isLoading } = usePersonBalances(user);
   const activityFeed = useActivityFeed(user, 30);
 
@@ -24,6 +30,46 @@ export default function PersonDetailPage({ personId }) {
     () => activityFeed.items.filter((item) => item.relatedUserIds?.includes(personId)),
     [activityFeed.items, personId],
   );
+
+  // "pay" if current user owes the person, "request" if person owes current user
+  const paymentDirection = person?.balance < 0 ? "pay" : "request";
+
+  const settlementItem = useMemo(() => {
+    if (!person || !user) return null;
+    const absBalance = Math.abs(person.balanceCents || 0);
+    return {
+      amount: absBalance / 100,
+      cents: absBalance,
+      toName: paymentDirection === "pay" ? person.displayName : "you",
+      fromName: paymentDirection === "pay" ? "you" : person.displayName,
+      toUserId: paymentDirection === "pay" ? person.id : user.id,
+      fromUserId: paymentDirection === "pay" ? user.id : person.id,
+    };
+  }, [person, user, paymentDirection]);
+
+  const counterparty = useMemo(() => {
+    if (!person) return null;
+    return {
+      display_name: person.displayName,
+      venmo_username: person.venmoUsername || "",
+      cash_app_tag: person.cashTag || "",
+      phone: person.phone || "",
+    };
+  }, [person]);
+
+  // Build per-group records that will zero out each group's A↔B balance
+  const buildGroupSettlements = useCallback(() => {
+    if (!person || !user) return [];
+    return (person.groupBreakdowns || []).map((breakdown) => {
+      const weOweThemInGroup = breakdown.balanceCents < 0;
+      return {
+        groupId: breakdown.groupId,
+        fromUserId: weOweThemInGroup ? user.id : person.id,
+        toUserId: weOweThemInGroup ? person.id : user.id,
+        amountCents: Math.abs(breakdown.balanceCents),
+      };
+    });
+  }, [person, user]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -49,6 +95,33 @@ export default function PersonDetailPage({ personId }) {
       authListener.subscription.unsubscribe();
     };
   }, []);
+
+  const handleSettleUp = useCallback(() => {
+    setIsPaymentOpen(true);
+  }, []);
+
+  const handleClosePayment = useCallback(() => {
+    setIsPaymentOpen(false);
+  }, []);
+
+  const handleConfirmSettlement = useCallback(
+    async ({ method }) => {
+      if (!supabase || !user || !person) return;
+      setIsSettling(true);
+      try {
+        const groupSettlements = buildGroupSettlements();
+        if (groupSettlements.length > 0) {
+          await createNetSettlement(supabase, groupSettlements, method || "other");
+        }
+        setIsPaymentOpen(false);
+      } catch (err) {
+        console.error("Net settlement failed:", err);
+      } finally {
+        setIsSettling(false);
+      }
+    },
+    [user, person, buildGroupSettlements],
+  );
 
   if (!authReady || isLoading) {
     return (
@@ -81,5 +154,30 @@ export default function PersonDetailPage({ personId }) {
     );
   }
 
-  return <PersonDetail person={person} activityItems={personActivity} />;
+  const sharedGroupName =
+    person.sharedGroups.length === 1
+      ? person.sharedGroups[0].name
+      : `${person.sharedGroups.length} groups`;
+
+  return (
+    <>
+      <PersonDetail
+        person={person}
+        activityItems={personActivity}
+        onSettleUp={handleSettleUp}
+        isSettling={isSettling}
+      />
+
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        direction={paymentDirection}
+        settlementItem={settlementItem}
+        counterparty={counterparty}
+        groupName={sharedGroupName}
+        isSubmitting={isSettling}
+        onClose={handleClosePayment}
+        onConfirmSettlement={handleConfirmSettlement}
+      />
+    </>
+  );
 }
