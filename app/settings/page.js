@@ -52,6 +52,12 @@ export default function SettingsPage() {
   const { isDark, toggleTheme } = useTheme();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [venmo, setVenmo] = useState("");
+  const [cashApp, setCashApp] = useState("");
+  const [phone, setPhone] = useState("");
+  const [isSavingHandles, setIsSavingHandles] = useState(false);
+  const [handlesSaved, setHandlesSaved] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -67,11 +73,14 @@ export default function SettingsPage() {
       if (nextUser) {
         const profileResponse = await supabase
           .from("profiles")
-          .select("display_name, username")
+          .select("display_name, username, venmo_username, cash_app_tag, zelle_phone, phone")
           .eq("user_id", nextUser.id)
           .maybeSingle();
-        if (isMounted && !profileResponse.error) {
-          setProfile(profileResponse.data || null);
+        if (isMounted && !profileResponse.error && profileResponse.data) {
+          setProfile(profileResponse.data);
+          setVenmo(profileResponse.data.venmo_username || "");
+          setCashApp(profileResponse.data.cash_app_tag || "");
+          setPhone(profileResponse.data.zelle_phone || profileResponse.data.phone || "");
         }
       }
     }
@@ -98,6 +107,40 @@ export default function SettingsPage() {
     await supabase?.auth.signOut();
     router.replace("/");
   }, [router]);
+
+  const handleSaveHandles = useCallback(async () => {
+    if (!supabase || !user) return;
+    setIsSavingHandles(true);
+    try {
+      await supabase.from("profiles").upsert(
+        {
+          user_id: user.id,
+          venmo_username: venmo.replace(/^@/, "").trim(),
+          cash_app_tag: cashApp.replace(/^\$/, "").trim(),
+          zelle_phone: phone.trim(),
+          phone: phone.trim(),
+        },
+        { onConflict: "user_id" },
+      );
+      // Mirror to all group_members so counterparties can see handles
+      await supabase
+        .from("group_members")
+        .update({
+          venmo_username: venmo.replace(/^@/, "").trim(),
+          phone: phone.trim(),
+        })
+        .eq("user_id", user.id);
+    } catch (err) {
+      console.error("Failed to save payment handles:", err);
+    } finally {
+      setIsSavingHandles(false);
+      setHandlesSaved(true);
+      setTimeout(() => {
+        setHandlesSaved(false);
+        setIsPaymentOpen(false);
+      }, 1200);
+    }
+  }, [cashApp, phone, user, venmo]);
 
   const displayName =
     profile?.display_name || user?.user_metadata?.display_name || user?.email?.split("@")[0] || "You";
@@ -150,7 +193,15 @@ export default function SettingsPage() {
           </div>
           <div className="mt-3">
             <SettingsRow title="Notifications" subtitle="Expense updates, invites, and settle-up nudges" onClick={() => {}} />
-            <SettingsRow title="Payment methods" subtitle="Venmo, Zelle, Cash App, Apple Cash" onClick={() => {}} />
+            <SettingsRow
+              title="Payment methods"
+              subtitle={
+                venmo || cashApp || phone
+                  ? [venmo && `@${venmo}`, cashApp && `$${cashApp}`, phone].filter(Boolean).join(" · ")
+                  : "Add Venmo, Cash App, Zelle"
+              }
+              onClick={() => setIsPaymentOpen(true)}
+            />
             <SettingsRow title="Currency" subtitle="USD ($)" onClick={() => {}} />
             <button
               type="button"
@@ -198,6 +249,82 @@ export default function SettingsPage() {
           Evenly 2.0 foundation
         </div>
       </div>
+      {isPaymentOpen ? (
+        <div className="fixed inset-0 z-50 bg-[var(--overlay)]" onClick={() => setIsPaymentOpen(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Payment methods"
+            className="fixed inset-x-0 bottom-0 rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-10 shadow-[0_-16px_48px_rgba(28,25,23,0.18)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[var(--border)]" />
+            <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Payment methods</h2>
+            <p className="mt-1 text-[14px] text-[var(--text-muted)]">
+              Your handles let others open Venmo, Cash App, or Zelle pre-filled when settling up.
+            </p>
+
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="block text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                  Venmo username
+                </label>
+                <div className="relative mt-2">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[16px] font-medium text-[var(--text-muted)]">@</span>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    placeholder="username"
+                    value={venmo}
+                    onChange={(e) => setVenmo(e.target.value.replace(/^@/, ""))}
+                    className="h-[52px] w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface-muted)] pl-8 pr-4 text-[16px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                  Cash App $cashtag
+                </label>
+                <div className="relative mt-2">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[16px] font-medium text-[var(--text-muted)]">$</span>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    placeholder="cashtag"
+                    value={cashApp}
+                    onChange={(e) => setCashApp(e.target.value.replace(/^\$/, ""))}
+                    className="h-[52px] w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface-muted)] pl-8 pr-4 text-[16px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                  Phone (Zelle &amp; Apple Cash)
+                </label>
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+1 (555) 000-0000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="mt-2 h-[52px] w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface-muted)] px-4 text-[16px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveHandles}
+              disabled={isSavingHandles}
+              className="mt-6 flex min-h-[52px] w-full items-center justify-center rounded-full bg-[var(--accent)] text-[16px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+            >
+              {handlesSaved ? "Saved!" : isSavingHandles ? "Saving..." : "Save payment info"}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </motion.main>
   );
 }
