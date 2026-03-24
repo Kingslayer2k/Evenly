@@ -37,6 +37,7 @@ import {
 } from "../lib/utils";
 
 const AddExpenseModal = dynamic(() => import("./AddExpenseModal"), { loading: () => null });
+const TripSummaryModal = dynamic(() => import("./TripSummaryModal"), { loading: () => null });
 const CompleteRotationModal = dynamic(() => import("./CompleteRotationModal"), { loading: () => null });
 const CreateRotationModal = dynamic(() => import("./CreateRotationModal"), { loading: () => null });
 const DeleteGroupDialog = dynamic(() => import("./DeleteGroupDialog"), { loading: () => null });
@@ -199,6 +200,7 @@ export default function GroupDetailPage({ groupId }) {
   const [isCompletingRotation, setIsCompletingRotation] = useState(false);
   const [paymentFlow, setPaymentFlow] = useState(null);
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(720);
 
   const showToast = useCallback((message) => {
@@ -387,7 +389,26 @@ export default function GroupDetailPage({ groupId }) {
   const memberPreview = useMemo(() => getMemberPreview(members), [members]);
   const inviteCode = group?.join_code || group?.code || "------";
   const shareLink = typeof window !== "undefined" ? `${window.location.origin}/groups?join=${inviteCode}` : "";
-const shouldVirtualizeExpenses = expenses.length > 50;
+  const shouldVirtualizeExpenses = expenses.length > 50;
+  const groupedExpenses = useMemo(() => {
+    if (!expenses.length || shouldVirtualizeExpenses) return [];
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sections = new Map();
+    for (const expense of expenses) {
+      const d = new Date(expense.created_at);
+      const expDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const diff = Math.round((today - expDay) / 86400000);
+      let label;
+      if (diff <= 0) label = "Today";
+      else if (diff === 1) label = "Yesterday";
+      else if (diff < 7) label = d.toLocaleDateString("en-US", { weekday: "long" });
+      else label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: diff > 364 ? "numeric" : undefined });
+      if (!sections.has(label)) sections.set(label, []);
+      sections.get(label).push(expense);
+    }
+    return Array.from(sections.entries());
+  }, [expenses, shouldVirtualizeExpenses]);
   const expenseListHeight = useMemo(
     () => Math.min(Math.max(viewportHeight - 360, 360), expenses.length * 110),
     [expenses.length, viewportHeight],
@@ -955,7 +976,7 @@ const shouldVirtualizeExpenses = expenses.length > 50;
             </section>
 
             <div className="mt-6 inline-flex rounded-full bg-[var(--surface-muted)] p-1">
-              {["expenses", "members", "rotations"].map((tab) => {
+              {["expenses", "members", "rotations", "settings"].map((tab) => {
                 const active = detailTab === tab;
                 return (
                   <button
@@ -996,7 +1017,7 @@ const shouldVirtualizeExpenses = expenses.length > 50;
                     </button>
                   </div>
 
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4">
                     {shouldVirtualizeExpenses ? (
                       <List
                         defaultHeight={expenseListHeight}
@@ -1012,17 +1033,28 @@ const shouldVirtualizeExpenses = expenses.length > 50;
                         overscanCount={4}
                         style={{ height: expenseListHeight, width: "100%" }}
                       />
-                    ) : (
-                      expenses.map((expense) => (
-                        <ExpenseRow
-                          key={expense.id}
-                          expense={expense}
-                          members={members}
-                          onOpenExpense={handleOpenExpense}
-                          onSwitchPayer={handleOpenExpensePayerSwitch}
-                        />
-                      ))
-                    )}
+                    ) : groupedExpenses.length ? (
+                      <div className="space-y-5">
+                        {groupedExpenses.map(([label, groupItems]) => (
+                          <div key={label}>
+                            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                              {label}
+                            </div>
+                            <div className="space-y-3">
+                              {groupItems.map((expense) => (
+                                <ExpenseRow
+                                  key={expense.id}
+                                  expense={expense}
+                                  members={members}
+                                  onOpenExpense={handleOpenExpense}
+                                  onSwitchPayer={handleOpenExpensePayerSwitch}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
 
                     {!expenses.length ? (
                       <div className="rounded-2xl bg-[var(--surface-muted)] px-4 py-4 text-[14px] text-[var(--text-muted)]">
@@ -1142,6 +1174,93 @@ const shouldVirtualizeExpenses = expenses.length > 50;
               ) : null}
               </section>
             ) : null}
+
+            {detailTab === "settings" ? (
+              <div className="mt-6 space-y-4">
+                <section className="rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Group details</h2>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-4 rounded-[18px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3.5">
+                      <div className="text-[14px] text-[var(--text-muted)]">Name</div>
+                      <div className="text-[15px] font-semibold text-[var(--text)]">{group?.name}</div>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-[18px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3.5">
+                      <div className="text-[14px] text-[var(--text-muted)]">Type</div>
+                      <div className="text-[15px] font-semibold text-[var(--text)]">{isTrip ? "Trip" : "Home"}</div>
+                    </div>
+                    {tripDateRange ? (
+                      <div className="flex items-center justify-between gap-4 rounded-[18px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3.5">
+                        <div className="text-[14px] text-[var(--text-muted)]">Dates</div>
+                        <div className="text-[15px] font-semibold text-[var(--text)]">{tripDateRange}</div>
+                      </div>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-4 rounded-[18px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3.5">
+                      <div className="text-[14px] text-[var(--text-muted)]">Members</div>
+                      <div className="text-[15px] font-semibold text-[var(--text)]">{members.length}</div>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-[18px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3.5">
+                      <div className="text-[14px] text-[var(--text-muted)]">Expenses</div>
+                      <div className="text-[15px] font-semibold text-[var(--text)]">{expenses.length}</div>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-[18px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3.5">
+                      <div className="text-[14px] text-[var(--text-muted)]">Invite code</div>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyCode()}
+                        className="font-mono text-[15px] font-bold tracking-[0.12em] text-[var(--accent)] transition hover:opacity-80"
+                      >
+                        {inviteCode}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                {isTrip ? (
+                  <section className="rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Export</h2>
+                    <p className="mt-3 text-[14px] leading-6 text-[var(--text-muted)]">
+                      Generate a full breakdown of {group.name} — total spent, per-person shares, and settlement recommendations.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsSummaryOpen(true)}
+                      className="mt-4 flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--accent)] px-5 text-[15px] font-semibold text-white transition hover:opacity-90"
+                    >
+                      View trip summary
+                    </button>
+                  </section>
+                ) : null}
+
+                <section className="rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Actions</h2>
+                  <div className="mt-4 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => void handleShareInvite()}
+                      className="flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-5 text-[15px] font-semibold text-[var(--text)] transition hover:opacity-90"
+                    >
+                      Share invite link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsLeaveGroupOpen(true)}
+                      className="flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-5 text-[15px] font-semibold text-[var(--danger)] transition hover:opacity-90"
+                    >
+                      Leave {isTrip ? "trip" : "group"}
+                    </button>
+                    {membership?.role === "admin" ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsDeleteGroupOpen(true)}
+                        className="flex min-h-11 w-full items-center justify-center rounded-full bg-[rgba(220,38,38,0.08)] px-5 text-[15px] font-semibold text-[var(--danger)] transition hover:opacity-90"
+                      >
+                        Delete {isTrip ? "trip" : "group"}
+                      </button>
+                    ) : null}
+                  </div>
+                </section>
+              </div>
+            ) : null}
           </>
         )}
 
@@ -1156,6 +1275,17 @@ const shouldVirtualizeExpenses = expenses.length > 50;
         <div className="fixed right-4 bottom-[calc(var(--safe-bottom)+80px)] z-40 rounded-full bg-[#1C1917] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_20px_rgba(28,25,23,0.18)]">
           {toast}
         </div>
+      ) : null}
+
+      {isSummaryOpen ? (
+        <TripSummaryModal
+          isOpen={isSummaryOpen}
+          group={group}
+          members={members}
+          expenses={expenses}
+          summary={summary}
+          onClose={() => setIsSummaryOpen(false)}
+        />
       ) : null}
 
         {isExpenseModalOpen ? (
