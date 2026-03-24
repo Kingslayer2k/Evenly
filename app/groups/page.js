@@ -539,19 +539,11 @@ export default function GroupsPage() {
           <div className="mb-6 flex gap-2">
             <button
               type="button"
-              onClick={() => { setCreateMode("group"); setIsCreateOpen(true); }}
+              onClick={() => { setCreateMode("choose"); setIsCreateOpen(true); }}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] px-3 text-[14px] font-semibold text-white whitespace-nowrap transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
             >
               <PlusIcon />
-              Group
-            </button>
-            <button
-              type="button"
-              onClick={() => { setCreateMode("trip"); setIsCreateOpen(true); }}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] whitespace-nowrap transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
-            >
-              <PlusIcon />
-              Trip
+              New
             </button>
             <button
               type="button"
@@ -589,33 +581,58 @@ export default function GroupsPage() {
           </div>
         ) : displayGroups.length === 0 ? (
           <div className="space-y-4">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              What are you splitting?
+            </p>
+
             <button
               type="button"
               onClick={() => { setCreateMode("trip"); setIsCreateOpen(true); }}
-              className="mx-auto flex w-full items-center justify-center rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
+              className="relative w-full overflow-hidden rounded-[28px] p-6 text-left transition active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg, #2d4a35 0%, #3d6b47 50%, #2a5c3a 100%)" }}
             >
-              <div className="w-full rounded-[20px] bg-[var(--surface-soft)] px-6 py-5">
-                <div className="text-[20px] font-semibold text-[var(--text)]">Create your first trip</div>
-                <p className="mt-1 text-[14px] leading-5 text-[var(--text-muted)]">
-                  Competitions, vacations, shared spending.
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
+              <div className="relative">
+                <div className="text-[42px] leading-none">✈️</div>
+                <div className="mt-4 text-[22px] font-bold tracking-[-0.03em] text-white">
+                  Trip or Event
+                </div>
+                <p className="mt-1.5 text-[14px] leading-5 text-white/70">
+                  Competitions, vacations, weekend runs. Settle when it&apos;s done.
                 </p>
+                <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-[13px] font-semibold text-white">
+                  Start a trip
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </div>
               </div>
             </button>
+
             <button
               type="button"
               onClick={() => { setCreateMode("group"); setIsCreateOpen(true); }}
-              className="mx-auto flex w-full items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
+              className="relative w-full overflow-hidden rounded-[28px] p-6 text-left transition active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg, #1c2a4a 0%, #2a3d6b 50%, #1a2e5c 100%)" }}
             >
-              <div className="flex w-full flex-col items-center rounded-[20px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-6 py-5">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent-strong)]">
-                  <PlusIcon />
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
+              <div className="relative">
+                <div className="text-[42px] leading-none">🏠</div>
+                <div className="mt-4 text-[22px] font-bold tracking-[-0.03em] text-white">
+                  Roommates
                 </div>
-                <div className="mt-4 text-[20px] font-semibold text-[var(--text)]">Create a group</div>
-                <p className="mt-1 text-[14px] leading-5 text-[var(--text-muted)]">
-                  Roommates, housemates, monthly splits.
+                <p className="mt-1.5 text-[14px] leading-5 text-white/70">
+                  Rent, groceries, utilities — the everyday stuff without awkwardness.
                 </p>
+                <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-[13px] font-semibold text-white">
+                  Set up a home
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </div>
               </div>
             </button>
+
             <div className="text-center">
               <button
                 type="button"

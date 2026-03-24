@@ -520,6 +520,25 @@ export default function GroupDetailPage({ groupId }) {
 
         await loadDetail(user, { refresh: true });
         showToast(recurringInterval ? "Recurring expense saved" : "Expense added");
+
+        // Fire push notifications to other group members
+        const senderName = membership?.display_name || "Someone";
+        const otherUserIds = members
+          .filter((m) => m.user_id && m.user_id !== user.id)
+          .map((m) => m.user_id);
+        if (otherUserIds.length > 0) {
+          fetch("/api/push/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipientUserIds: otherUserIds,
+              title: group?.name || "Evenly",
+              body: `${senderName} added "${title || "an expense"}" — $${(amountCents / 100).toFixed(2)}`,
+              url: `/groups/${groupId}`,
+            }),
+          }).catch(() => {});
+        }
+
         return { ok: true };
       } catch (error) {
         console.error(error);
@@ -529,7 +548,7 @@ export default function GroupDetailPage({ groupId }) {
         };
       }
     },
-    [groupId, loadDetail, membership?.id, showToast, user],
+    [group?.name, groupId, loadDetail, membership?.display_name, membership?.id, members, showToast, user],
   );
 
   const handleEditExpense = useCallback(
@@ -741,6 +760,22 @@ export default function GroupDetailPage({ groupId }) {
         setPaymentFlow(null);
         await loadDetail(user, { refresh: true });
         showToast(`Settled with ${counterparty?.display_name || "them"}`);
+
+        // Notify the recipient
+        const notifyUserId = direction === "pay" ? toUserId : fromUserId;
+        const senderName = membership?.display_name || "Someone";
+        if (notifyUserId && notifyUserId !== user.id) {
+          fetch("/api/push/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipientUserIds: [notifyUserId],
+              title: "Settlement recorded",
+              body: `${senderName} marked a payment in ${group?.name || "Evenly"}`,
+              url: `/groups/${groupId}`,
+            }),
+          }).catch(() => {});
+        }
       } catch (error) {
         console.error(error);
         showToast(
@@ -752,7 +787,7 @@ export default function GroupDetailPage({ groupId }) {
         setIsSavingSettlement(false);
       }
     },
-    [group?.name, groupId, loadDetail, showToast, user],
+    [group?.name, groupId, loadDetail, membership?.display_name, showToast, user],
   );
 
   const handleCompleteRotation = useCallback(

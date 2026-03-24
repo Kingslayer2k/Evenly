@@ -28,8 +28,10 @@ function ImagePlusIcon() {
   );
 }
 
-export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "group" }) {
-  const [currentStep, setCurrentStep] = useState(1);
+export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "choose" }) {
+  const needsChoose = mode === "choose";
+  const [currentStep, setCurrentStep] = useState(needsChoose ? 0 : 1);
+  const [chosenMode, setChosenMode] = useState(needsChoose ? null : mode);
   const [groupName, setGroupName] = useState("");
   const [tripStartDate, setTripStartDate] = useState("");
   const [tripEndDate, setTripEndDate] = useState("");
@@ -43,8 +45,11 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "gr
   const colorInputRef = useRef(null);
   const imageInputRef = useRef(null);
 
+  const activeMode = chosenMode || (needsChoose ? "group" : mode);
+
   function resetState() {
-    setCurrentStep(1);
+    setCurrentStep(needsChoose ? 0 : 1);
+    setChosenMode(needsChoose ? null : mode);
     setGroupName("");
     setTripStartDate("");
     setTripEndDate("");
@@ -98,7 +103,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "gr
 
     const result = await onCreate?.({
       name: trimmedName,
-      mode,
+      mode: activeMode,
       tripStartDate: tripStartDate || null,
       tripEndDate: tripEndDate || null,
       color: selectedColor,
@@ -173,6 +178,14 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "gr
             <button
               type="button"
               className="text-[16px] font-medium text-[var(--text-muted)]"
+              onClick={needsChoose ? () => setCurrentStep(0) : resetAndClose}
+            >
+              {needsChoose ? "Back" : "Cancel"}
+            </button>
+          ) : currentStep === 0 ? (
+            <button
+              type="button"
+              className="text-[16px] font-medium text-[var(--text-muted)]"
               onClick={resetAndClose}
             >
               Cancel
@@ -196,30 +209,89 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "gr
           )}
         </div>
 
-        {currentStep === 1 ? (
+        {currentStep === 0 ? (
+          <div className="flex h-[calc(85vh-56px)] flex-col px-5 pt-6 pb-8">
+            <h2 className="text-[28px] font-bold tracking-[-0.03em] text-[var(--text)]">
+              What are you setting up?
+            </h2>
+            <p className="mt-2 text-[15px] text-[var(--text-muted)]">
+              Pick the type that fits — you can always create more later.
+            </p>
+
+            <div className="mt-6 flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={() => { setChosenMode("trip"); setCurrentStep(1); }}
+                className="group relative overflow-hidden rounded-[28px] p-6 text-left transition active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg, #2d4a35 0%, #3d6b47 50%, #2a5c3a 100%)" }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
+                <div className="relative">
+                  <div className="text-[44px] leading-none">✈️</div>
+                  <div className="mt-4 text-[22px] font-bold tracking-[-0.03em] text-white">
+                    Trip or Event
+                  </div>
+                  <p className="mt-1.5 text-[14px] leading-5 text-white/70">
+                    Competitions, vacations, weekend runs. Track everything, settle up when it&apos;s over.
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-[13px] font-semibold text-white">
+                    Start a trip
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 8h10M9 4l4 4-4 4" />
+                    </svg>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setChosenMode("group"); setCurrentStep(1); }}
+                className="group relative overflow-hidden rounded-[28px] p-6 text-left transition active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg, #1c2a4a 0%, #2a3d6b 50%, #1a2e5c 100%)" }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
+                <div className="relative">
+                  <div className="text-[44px] leading-none">🏠</div>
+                  <div className="mt-4 text-[22px] font-bold tracking-[-0.03em] text-white">
+                    Roommates
+                  </div>
+                  <p className="mt-1.5 text-[14px] leading-5 text-white/70">
+                    Rent, groceries, utilities, the everyday stuff. Split it fairly without the awkwardness.
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-[13px] font-semibold text-white">
+                    Set up a home
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 8h10M9 4l4 4-4 4" />
+                    </svg>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        ) : currentStep === 1 ? (
           <div className="flex h-[calc(85vh-56px)] flex-col">
             <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
               <h2 className="text-[28px] font-bold text-[var(--text)]">
-                {mode === "trip" ? "New trip" : "New group"}
+                {activeMode === "trip" ? "New trip" : "New group"}
               </h2>
               <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">
-                {mode === "trip"
+                {activeMode === "trip"
                   ? "Competitions, vacations, and short shared spending in one place."
                   : "Roomies, housemates, and the people you split everyday life with."}
               </p>
 
               <label className="mt-8 block text-[13px] font-medium text-[var(--text-muted)]">
-                {mode === "trip" ? "Trip name" : "Group name"}
+                {activeMode === "trip" ? "Trip name" : "Group name"}
               </label>
               <input
                 type="text"
                 value={groupName}
                 onChange={(event) => setGroupName(event.target.value)}
-                placeholder={mode === "trip" ? "e.g., ICDC Atlanta 2026" : "e.g., The Apartment"}
+                placeholder={activeMode === "trip" ? "e.g., ICDC Atlanta 2026" : "e.g., The Apartment"}
                 className="mt-2 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] font-normal text-[var(--text)] placeholder:text-[var(--text-soft)] outline-none focus:border-[var(--accent)]"
               />
 
-              {mode === "trip" ? (
+              {activeMode === "trip" ? (
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[13px] font-medium text-[var(--text-muted)]">
@@ -327,10 +399,10 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "gr
                             className="text-[26px] font-semibold leading-[0.96] tracking-[-0.04em]"
                             style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
                           >
-                            {groupName.trim() || (mode === "trip" ? "Your trip" : "Your group")}
+                            {groupName.trim() || (activeMode === "trip" ? "Your trip" : "Your group")}
                           </div>
                           <div className="mt-2 text-[14px] text-white/85">
-                            {mode === "trip"
+                            {activeMode === "trip"
                               ? [tripStartDate, tripEndDate].filter(Boolean).join(" → ") || "Dates coming soon"
                               : "You and the crew"}
                           </div>
@@ -377,7 +449,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "gr
             <div className="text-center">
               <div className="text-[48px] leading-none">✓</div>
               <h2 className="mt-4 text-[28px] font-bold text-[var(--text)]">
-                {mode === "trip" ? "Trip created!" : "Group created!"}
+                {activeMode === "trip" ? "Trip created!" : "Group created!"}
               </h2>
               <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">
                 Share this code with your friends

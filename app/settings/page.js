@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
+import usePushNotifications from "../../hooks/usePushNotifications";
 import useTheme from "../../hooks/useTheme";
 import { pageTransition } from "../../lib/animations";
 import { supabase } from "../../lib/supabase";
@@ -51,6 +52,7 @@ export default function SettingsPage() {
   const reduceMotion = useLowPerformanceMode();
   const { isDark, toggleTheme } = useTheme();
   const [user, setUser] = useState(null);
+  const { permission, isSubscribed, isSupported, subscribe, unsubscribe } = usePushNotifications(user?.id);
   const [profile, setProfile] = useState(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [venmo, setVenmo] = useState("");
@@ -192,7 +194,30 @@ export default function SettingsPage() {
             Preferences
           </div>
           <div className="mt-3">
-            <SettingsRow title="Notifications" subtitle="Expense updates, invites, and settle-up nudges" onClick={() => {}} />
+            <SettingsRow
+              title="Notifications"
+              subtitle={
+                !isSupported
+                  ? "Not supported in this browser"
+                  : isSubscribed
+                    ? "On — you'll hear about new expenses"
+                    : permission === "denied"
+                      ? "Blocked — allow in browser settings"
+                      : "Off — tap to enable"
+              }
+              onClick={isSupported && permission !== "denied" ? () => void (isSubscribed ? unsubscribe() : subscribe()) : undefined}
+              trailing={
+                isSupported && permission !== "denied" ? (
+                  <div
+                    className={`relative h-7 w-12 rounded-full transition ${isSubscribed ? "bg-[var(--accent)]" : "bg-[var(--surface-muted)]"}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${isSubscribed ? "left-5" : "left-0.5"}`}
+                    />
+                  </div>
+                ) : null
+              }
+            />
             <SettingsRow
               title="Payment methods"
               subtitle={
