@@ -39,6 +39,7 @@ import {
 
 const AddExpenseModal = dynamic(() => import("./AddExpenseModal"), { loading: () => null });
 const TripSummaryModal = dynamic(() => import("./TripSummaryModal"), { loading: () => null });
+const QRInviteModal = dynamic(() => import("./QRInviteModal"), { loading: () => null });
 const CompleteRotationModal = dynamic(() => import("./CompleteRotationModal"), { loading: () => null });
 const CreateRotationModal = dynamic(() => import("./CreateRotationModal"), { loading: () => null });
 const DeleteGroupDialog = dynamic(() => import("./DeleteGroupDialog"), { loading: () => null });
@@ -203,6 +204,7 @@ export default function GroupDetailPage({ groupId }) {
   const [paymentFlow, setPaymentFlow] = useState(null);
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isQROpen, setIsQROpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(720);
 
   const showToast = useCallback((message) => {
@@ -956,10 +958,10 @@ export default function GroupDetailPage({ groupId }) {
                 <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <button
                     type="button"
-                    onClick={() => void handleCopyCode()}
+                    onClick={() => setIsQROpen(true)}
                     className="flex min-h-11 items-center justify-center rounded-full bg-white px-4 py-2 text-center text-[14px] font-semibold text-[#1C1917] transition hover:bg-[#F3F4F6]"
                   >
-                    Copy code
+                    QR code
                   </button>
                   <button
                     type="button"
@@ -1316,6 +1318,16 @@ export default function GroupDetailPage({ groupId }) {
         <div className="fixed right-4 bottom-[calc(var(--safe-bottom)+80px)] z-40 rounded-full bg-[#1C1917] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_20px_rgba(28,25,23,0.18)]">
           {toast}
         </div>
+      ) : null}
+
+      {isQROpen ? (
+        <QRInviteModal
+          isOpen={isQROpen}
+          groupName={group?.name}
+          inviteCode={inviteCode}
+          shareLink={shareLink}
+          onClose={() => setIsQROpen(false)}
+        />
       ) : null}
 
       {isSummaryOpen ? (
