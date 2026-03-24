@@ -163,7 +163,12 @@ export default function PeoplePage() {
     >
       <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-6 pt-5 pb-4 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-[460px]">
-          <h1 className="text-[32px] font-bold tracking-[-0.05em] text-[var(--text)]">People</h1>
+          <h1
+            className="text-[28px] font-semibold tracking-[-0.05em] text-[var(--text)]"
+            style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+          >
+            People
+          </h1>
           <p className="mt-1 text-[14px] text-[var(--text-muted)]">Track who you split with</p>
 
           <div className="mt-4 flex h-11 items-center rounded-[12px] border border-[var(--border)] bg-[var(--surface-muted)] px-4">

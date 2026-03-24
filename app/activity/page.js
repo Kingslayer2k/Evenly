@@ -132,7 +132,12 @@ export default function ActivityPage() {
     >
       <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color:var(--surface)]/94 px-6 pt-5 pb-4 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-[460px]">
-          <div className="text-[28px] font-bold tracking-[-0.05em] text-[var(--text)]">Activity</div>
+          <div
+            className="text-[28px] font-semibold tracking-[-0.05em] text-[var(--text)]"
+            style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+          >
+            Activity
+          </div>
           <p className="mt-1 text-[14px] text-[var(--text-muted)]">
             A shared timeline across trips, homes, and every balance shift.
           </p>

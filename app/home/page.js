@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import EvenlyLogo from "../../components/EvenlyLogo";
 import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import usePersonBalances from "../../hooks/usePersonBalances";
 import useActivityFeed from "../../hooks/useActivityFeed";
@@ -251,7 +250,12 @@ export default function HomePage() {
     >
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/94 px-5 py-3 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[460px] items-center justify-between">
-          <EvenlyLogo size="md" variant="full" theme="auto" />
+          <div
+            className="text-[28px] font-semibold leading-none tracking-[-0.05em] text-[var(--accent-strong)]"
+            style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+          >
+            Evenly
+          </div>
           <button
             type="button"
             onClick={() => router.push("/settings")}

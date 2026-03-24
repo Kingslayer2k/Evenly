@@ -522,7 +522,12 @@ export default function GroupsPage() {
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/94 px-5 py-3 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[460px] items-center justify-between">
           <div>
-            <div className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Groups</div>
+            <div
+              className="text-[28px] font-semibold tracking-[-0.05em] text-[var(--text)]"
+              style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+            >
+              Groups
+            </div>
             <div className="text-[13px] text-[var(--text-muted)]">
               {displayGroups.length ? `${displayGroups.length} active` : "Create or join one"}
             </div>

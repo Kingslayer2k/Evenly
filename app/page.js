@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import EvenlyLogo from "../components/EvenlyLogo";
 import { supabase } from "../lib/supabase";
 import { getStoredDisplayName, setStoredDisplayName } from "../lib/groupData";
 
@@ -212,10 +211,16 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-screen bg-white">
       <div className="mx-auto flex min-h-screen w-full max-w-[420px] flex-col items-center px-5 pt-[60px] pb-[80px]">
-        <EvenlyLogo size="xl" variant="full" theme="light" />
+        <h1
+          className="text-center text-[36px] font-semibold leading-[1.2] tracking-[-0.5px] text-[#3A4E43]"
+          style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+        >
+          <span className="block">Welcome To</span>
+          <span className="block">Evenly.</span>
+        </h1>
 
         <p
-          className="mt-5 mb-[44px] text-center text-[13px] font-semibold tracking-[-0.02em] text-[#5F7D6A]"
+          className="mt-3 mb-[44px] text-center text-[13px] font-semibold tracking-[-0.02em] text-[#5F7D6A]"
           style={{
             fontFamily:
               "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",

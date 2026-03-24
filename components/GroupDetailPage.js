@@ -894,7 +894,10 @@ export default function GroupDetailPage({ groupId }) {
           </button>
 
           <div className="text-center">
-            <div className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">
+            <div
+              className="text-[22px] font-semibold tracking-[-0.05em] text-[var(--text)]"
+              style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
+            >
               {group?.name || "Group"}
             </div>
             <div className="mt-1 text-[14px] text-[var(--text-muted)]">
