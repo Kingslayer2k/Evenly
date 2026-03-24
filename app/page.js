@@ -16,6 +16,18 @@ const SPACE_MODES = {
 };
 
 const SPACE_MODE_STORAGE_KEY = "evenly-space-mode";
+const AUTH_MODE_STORAGE_KEY = "evenly-auth-mode";
+
+function getStoredAuthMode() {
+  if (typeof window === "undefined") return AUTH_MODES.SIGN_UP;
+  const value = window.localStorage.getItem(AUTH_MODE_STORAGE_KEY);
+  return value === AUTH_MODES.LOG_IN ? AUTH_MODES.LOG_IN : AUTH_MODES.SIGN_UP;
+}
+
+function setStoredAuthMode(value) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(AUTH_MODE_STORAGE_KEY, value);
+}
 
 function getStoredSpaceMode() {
   if (typeof window === "undefined") return SPACE_MODES.GROUP;
@@ -59,7 +71,7 @@ function AuthModeToggle({ mode, onChange }) {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [mode, setMode] = useState(AUTH_MODES.SIGN_UP);
+  const [mode, setMode] = useState(() => getStoredAuthMode());
   const [spaceMode, setSpaceMode] = useState(() => getStoredSpaceMode());
   const [displayName, setDisplayName] = useState(() => getStoredDisplayName());
   const [email, setEmail] = useState("");
@@ -192,6 +204,7 @@ export default function OnboardingPage() {
       setStoredDisplayName(rememberedName);
     }
 
+    setStoredAuthMode(AUTH_MODES.SIGN_UP);
     router.replace("/groups");
   }
 
@@ -227,6 +240,7 @@ export default function OnboardingPage() {
             mode={mode}
             onChange={(nextMode) => {
               setMode(nextMode);
+              setStoredAuthMode(nextMode);
               resetMessages();
             }}
           />
