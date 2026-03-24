@@ -208,9 +208,11 @@ export default function ActivityPage() {
                 </div>
                 <div className="mt-3 space-y-3">
                   {sectionItems.map((item) => (
-                    <article
+                    <button
                       key={item.id}
-                      className="rounded-[20px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)]"
+                      type="button"
+                      onClick={() => item.groupId && router.push(`/groups/${item.groupId}`)}
+                      className="w-full rounded-[20px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)] text-left transition active:scale-[0.99] active:bg-[var(--surface-muted)]"
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--surface-accent)] text-[18px]">
@@ -226,7 +228,7 @@ export default function ActivityPage() {
                           {formatRelativeTime(item.createdAt)}
                         </div>
                       </div>
-                    </article>
+                    </button>
                   ))}
                 </div>
               </section>

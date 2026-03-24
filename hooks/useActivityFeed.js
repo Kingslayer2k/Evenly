@@ -63,7 +63,7 @@ export default function useActivityFeed(user, limit = 10) {
             .in("group_id", groupIds),
           supabase
             .from("expenses")
-            .select("id, group_id, paid_by, participants, shares, split_type, amount_cents, round_up_cents, created_at, title")
+            .select("id, group_id, paid_by, participants, shares, split_type, amount_cents, round_up_cents, created_at, title, name, description, emoji")
             .in("group_id", groupIds)
             .order("created_at", { ascending: false }),
           supabase
