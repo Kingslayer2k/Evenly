@@ -4,12 +4,23 @@ import { useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 
-function GroupsIcon() {
+function HomeIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M4 11.5 12 5l8 6.5" />
       <path d="M6.5 10.5V19h11v-8.5" />
       <path d="M10 19v-5h4v5" />
+    </svg>
+  );
+}
+
+function GroupsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="8" height="8" rx="2" />
+      <rect x="13" y="3" width="8" height="8" rx="2" />
+      <rect x="3" y="13" width="8" height="8" rx="2" />
+      <rect x="13" y="13" width="8" height="8" rx="2" />
     </svg>
   );
 }
@@ -44,35 +55,29 @@ function SettingsIcon() {
 }
 
 const NAV_ITEMS = [
-  { href: "/groups", label: "Home", icon: GroupsIcon },
+  { href: "/home", label: "Home", icon: HomeIcon },
+  { href: "/groups", label: "Groups", icon: GroupsIcon },
   { href: "/activity", label: "Activity", icon: ActivityIcon },
   { href: "/people", label: "People", icon: PeopleIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
+const SHOW_ON = new Set(["/home", "/groups", "/activity", "/people", "/settings", "/me"]);
+
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const shouldShow =
-    pathname === "/groups" ||
-    pathname === "/activity" ||
-    pathname === "/people" ||
-    pathname === "/settings" ||
-    pathname === "/me";
+  const shouldShow = SHOW_ON.has(pathname);
 
   useEffect(() => {
     NAV_ITEMS.forEach((item) => {
-      if (item.href !== pathname) {
-        router.prefetch(item.href);
-      }
+      if (item.href !== pathname) router.prefetch(item.href);
     });
   }, [pathname, router]);
 
   const handleNavigate = useCallback(
     (href) => {
-      if (href !== pathname) {
-        router.push(href);
-      }
+      if (href !== pathname) router.push(href);
     },
     [pathname, router],
   );
@@ -100,7 +105,7 @@ export default function BottomNav() {
                 {active ? <div className="absolute -top-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--accent)]" /> : null}
                 <Icon />
               </div>
-              <span className={`text-[11px] font-medium ${active ? "text-[var(--text)]" : "text-[var(--text-soft)]"}`}>
+              <span className={`text-[10px] font-medium ${active ? "text-[var(--text)]" : "text-[var(--text-soft)]"}`}>
                 {item.label}
               </span>
             </motion.button>

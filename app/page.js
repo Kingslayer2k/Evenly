@@ -89,7 +89,7 @@ export default function OnboardingPage() {
     async function bootstrapSession() {
       const { data } = await supabase.auth.getSession();
       if (isMounted && data.session?.user) {
-        router.replace("/groups");
+        router.replace("/home");
       }
     }
 
@@ -97,7 +97,7 @@ export default function OnboardingPage() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        router.replace("/groups");
+        router.replace("/home");
       }
     });
 
@@ -171,7 +171,7 @@ export default function OnboardingPage() {
       }
 
       if (data.session?.user) {
-        router.replace(`/groups?compose=${spaceMode}`);
+        router.replace(`/groups?compose=${spaceMode}&from=signup`);
         return;
       }
 
@@ -205,7 +205,7 @@ export default function OnboardingPage() {
     }
 
     setStoredAuthMode(AUTH_MODES.SIGN_UP);
-    router.replace("/groups");
+    router.replace("/home");
   }
 
   return (

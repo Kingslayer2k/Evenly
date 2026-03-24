@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import GroupCard from "../../components/GroupCard";
-import RotationCard from "../../components/RotationCard";
 import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import {
   prepareCardBackgroundImage,
@@ -16,24 +15,18 @@ import {
 } from "../../lib/cardAppearance";
 import { supabase } from "../../lib/supabase";
 import {
-  completeRotationRecord,
   createGroupWithMembership,
   joinGroupByCode,
-  loadRecentGroupExpenses,
   loadUserGroupsBundle,
-  loadUserTurnRotations,
   normalizeInviteCode,
   updateGroupCardColor,
   updateGroupCardImage,
 } from "../../lib/groupData";
 import {
-  computeExpenseShares,
   computeBalancesForGroup,
   formatBalance,
   formatCurrencyCompact,
-  getDisplayNameFromUser,
   getMemberPreview,
-  getStandingCopy,
   getStableCardColor,
   needsAttention,
   sumGroupTotal,
@@ -45,9 +38,6 @@ const CreateGroupModal = dynamic(() => import("../../components/CreateGroupModal
   loading: () => null,
 });
 const JoinGroupModal = dynamic(() => import("../../components/JoinGroupModal"), {
-  loading: () => null,
-});
-const CompleteRotationModal = dynamic(() => import("../../components/CompleteRotationModal"), {
   loading: () => null,
 });
 
@@ -75,17 +65,9 @@ function RefreshIcon() {
 
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" />
     </svg>
-  );
-}
-
-function AvatarIcon({ label }) {
-  return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[15px] font-semibold text-[var(--accent-strong)]">
-      {String(label || "E").slice(0, 1).toUpperCase()}
-    </div>
   );
 }
 
@@ -113,12 +95,6 @@ function ImagePlusIcon() {
   );
 }
 
-function formatSignedCurrency(value) {
-  const amount = Number(value || 0);
-  const prefix = amount > 0 ? "+" : amount < 0 ? "-" : "";
-  return `${prefix}$${Math.abs(amount).toFixed(2)}`;
-}
-
 function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageChange }) {
   const colorInputRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -138,7 +114,6 @@ function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageC
     stopClose(event);
     const file = event.target.files?.[0];
     if (!file) return;
-
     try {
       const imageData = await prepareCardBackgroundImage(file);
       await onImageChange?.(group, imageData);
@@ -160,10 +135,7 @@ function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageC
         onClick={stopClose}
       >
         {group.cardImage ? (
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${group.cardImage})` }}
-          />
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${group.cardImage})` }} />
         ) : null}
 
         <div className="relative bg-[rgba(28,25,23,0.18)] px-6 pt-6 pb-7 text-white">
@@ -179,11 +151,8 @@ function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageC
                 {group.memberPreview || "Just you for now"}
               </p>
             </div>
-
-            <div className={`pt-1 text-right ${group.needsAttention ? "pr-5" : ""}`}>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/68">
-                Total
-              </div>
+            <div className="pt-1 text-right">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/68">Total</div>
               <div className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-white">
                 {formatCurrencyCompact(group.totalSpent)}
               </div>
@@ -193,60 +162,33 @@ function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageC
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={(event) => {
-                stopClose(event);
-                colorInputRef.current?.click();
-              }}
+              onClick={(event) => { stopClose(event); colorInputRef.current?.click(); }}
               className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 py-2 text-[13px] font-semibold text-white transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A]"
             >
               <FourSquaresIcon />
               Color
             </button>
-
             <button
               type="button"
-              onClick={(event) => {
-                stopClose(event);
-                imageInputRef.current?.click();
-              }}
+              onClick={(event) => { stopClose(event); imageInputRef.current?.click(); }}
               className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 py-2 text-[13px] font-semibold text-white transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A]"
             >
               <ImagePlusIcon />
               Add image
             </button>
-
-            <input
-              ref={colorInputRef}
-              type="color"
-              value={group.cardColor}
-              onChange={(event) => onColorChange?.(group, event.target.value)}
-              className="sr-only"
-              tabIndex={-1}
-            />
-
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(event) => void handleImageInputChange(event)}
-              className="sr-only"
-              tabIndex={-1}
-            />
+            <input ref={colorInputRef} type="color" value={group.cardColor} onChange={(event) => onColorChange?.(group, event.target.value)} className="sr-only" tabIndex={-1} />
+            <input ref={imageInputRef} type="file" accept="image/*" onChange={(event) => void handleImageInputChange(event)} className="sr-only" tabIndex={-1} />
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-3">
             <div className="rounded-[22px] bg-white/16 p-4">
-              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/72">
-                {getStandingCopy(group.balance)}
-              </div>
+              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/72">Your balance</div>
               <div className="mt-2 text-[32px] font-bold leading-none tracking-[-0.05em] text-white">
                 {formatBalance(group.balance)}
               </div>
             </div>
             <div className="rounded-[22px] bg-white/16 p-4">
-              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/72">
-                Group details
-              </div>
+              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/72">Details</div>
               <div className="mt-2 text-[14px] leading-6 text-white/90">
                 {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"}
                 <br />
@@ -289,27 +231,16 @@ export default function GroupsPage() {
   const [createMode, setCreateMode] = useState("group");
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [previewState, setPreviewState] = useState({ group: null, openedAt: 0 });
-  const [turnRotations, setTurnRotations] = useState([]);
-  const [rotationToComplete, setRotationToComplete] = useState(null);
-  const [recentRotationExpenses, setRecentRotationExpenses] = useState([]);
-  const [isCompletingRotation, setIsCompletingRotation] = useState(false);
 
   const showToast = useCallback((message) => {
-    if (toastTimeoutRef.current) {
-      window.clearTimeout(toastTimeoutRef.current);
-    }
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     setToast(message);
-    toastTimeoutRef.current = window.setTimeout(() => {
-      setToast("");
-    }, 2400);
+    toastTimeoutRef.current = window.setTimeout(() => setToast(""), 2400);
   }, []);
 
   const persistCardColor = useCallback((groupId, color) => {
     setCardColors((previous) => {
-      const next = {
-        ...previous,
-        [groupId]: color,
-      };
+      const next = { ...previous, [groupId]: color };
       writeStoredCardColors(next);
       return next;
     });
@@ -317,84 +248,67 @@ export default function GroupsPage() {
 
   const persistCardImage = useCallback((groupId, imageData) => {
     setCardImages((previous) => {
-      const next = {
-        ...previous,
-        [groupId]: imageData,
-      };
+      const next = { ...previous, [groupId]: imageData };
       writeStoredCardImages(next);
       return next;
     });
   }, []);
 
-  const loadGroupsData = useCallback(
-    async (currentUser, options = {}) => {
-      if (!supabase || !currentUser) {
-        setProfileName("");
-        setGroups([]);
-        setMemberships([]);
-        setMembersByGroup({});
-        setExpensesByGroup({});
-        setTurnRotations([]);
+  const loadGroupsData = useCallback(async (currentUser, options = {}) => {
+    if (!supabase || !currentUser) {
+      setProfileName("");
+      setGroups([]);
+      setMemberships([]);
+      setMembersByGroup({});
+      setExpensesByGroup({});
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    setErrorMessage("");
+
+    if (!options.refresh) {
+      const staleBundle = readRuntimeCacheStale(`groups:${currentUser.id}`);
+      if (staleBundle) {
+        setProfileName(staleBundle.profileName);
+        setGroups(staleBundle.groups);
+        setMemberships(staleBundle.memberships);
+        setMembersByGroup(staleBundle.membersByGroup);
+        setExpensesByGroup(staleBundle.expensesByGroup);
         setIsLoading(false);
-        setIsRefreshing(false);
-        return;
-      }
-
-      setErrorMessage("");
-
-      // Show stale cached data immediately so the UI renders without a spinner.
-      // Fresh data always loads in background and replaces it silently.
-      if (!options.refresh) {
-        const staleBundle = readRuntimeCacheStale(`groups:${currentUser.id}`);
-        if (staleBundle) {
-          setProfileName(staleBundle.profileName);
-          setGroups(staleBundle.groups);
-          setMemberships(staleBundle.memberships);
-          setMembersByGroup(staleBundle.membersByGroup);
-          setExpensesByGroup(staleBundle.expensesByGroup);
-          setIsLoading(false);
-          setIsRefreshing(true); // subtle indicator while fresh data arrives
-        } else {
-          setIsLoading(true); // first launch ever — show skeleton
-        }
-      } else {
         setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
       }
+    } else {
+      setIsRefreshing(true);
+    }
 
-      try {
-        const [bundle, nextTurnRotations] = await Promise.all([
-          loadUserGroupsBundle(supabase, currentUser),
-          loadUserTurnRotations(supabase, currentUser),
-        ]);
-        setProfileName(bundle.profileName);
-        setGroups(bundle.groups);
-        setMemberships(bundle.memberships);
-        setMembersByGroup(bundle.membersByGroup);
-        setExpensesByGroup(bundle.expensesByGroup);
-        setTurnRotations(nextTurnRotations);
-      } catch (error) {
-        console.error(error);
-        setErrorMessage(error.message || "Could not load your groups yet.");
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
-    },
-    [],
-  );
+    try {
+      const bundle = await loadUserGroupsBundle(supabase, currentUser);
+      setProfileName(bundle.profileName);
+      setGroups(bundle.groups);
+      setMemberships(bundle.memberships);
+      setMembersByGroup(bundle.membersByGroup);
+      setExpensesByGroup(bundle.expensesByGroup);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage(error.message || "Could not load your groups yet.");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
-  const scheduleRefresh = useCallback(
-    (currentUser) => {
-      if (!currentUser || typeof window === "undefined") return;
-      if (refreshTimerRef.current) return;
-
-      refreshTimerRef.current = window.setTimeout(() => {
-        refreshTimerRef.current = null;
-        void loadGroupsData(currentUser, { refresh: true });
-      }, 180);
-    },
-    [loadGroupsData],
-  );
+  const scheduleRefresh = useCallback((currentUser) => {
+    if (!currentUser || typeof window === "undefined") return;
+    if (refreshTimerRef.current) return;
+    refreshTimerRef.current = window.setTimeout(() => {
+      refreshTimerRef.current = null;
+      void loadGroupsData(currentUser, { refresh: true });
+    }, 180);
+  }, [loadGroupsData]);
 
   useEffect(() => {
     setCardColors(readStoredCardColors());
@@ -402,6 +316,7 @@ export default function GroupsPage() {
   }, []);
 
   useEffect(() => {
+    router.prefetch("/home");
     router.prefetch("/activity");
     router.prefetch("/people");
     router.prefetch("/settings");
@@ -422,32 +337,22 @@ export default function GroupsPage() {
       setPendingInviteCode(nextInviteCode);
       window.localStorage.setItem("evenly-pending-join", nextInviteCode);
     } else {
-      // Recover a code that survived a navigation to auth and back
       const stored = normalizeInviteCode(window.localStorage.getItem("evenly-pending-join") || "");
       if (stored) setPendingInviteCode(stored);
     }
   }, [router]);
 
   useEffect(() => {
-    if (!supabase) {
-      setIsLoading(false);
-      return;
-    }
-
+    if (!supabase) { setIsLoading(false); return; }
     let isMounted = true;
 
     async function bootstrapAuth() {
       const { data } = await supabase.auth.getSession();
       if (!isMounted) return;
-
       const nextUser = data.session?.user || null;
       setUser(nextUser);
-
-      if (nextUser) {
-        await loadGroupsData(nextUser);
-      } else {
-        setIsLoading(false);
-      }
+      if (nextUser) await loadGroupsData(nextUser);
+      else setIsLoading(false);
     }
 
     void bootstrapAuth();
@@ -455,57 +360,27 @@ export default function GroupsPage() {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user || null;
       setUser(nextUser);
-
-      if (nextUser) {
-        void loadGroupsData(nextUser);
-      } else {
-        setProfileName("");
-        setGroups([]);
-        setMemberships([]);
-        setMembersByGroup({});
-        setExpensesByGroup({});
-        setTurnRotations([]);
-        setIsLoading(false);
-      }
+      if (nextUser) void loadGroupsData(nextUser);
+      else { setProfileName(""); setGroups([]); setMemberships([]); setMembersByGroup({}); setExpensesByGroup({}); setIsLoading(false); }
     });
 
     return () => {
       isMounted = false;
       authListener.subscription.unsubscribe();
-      if (refreshTimerRef.current) {
-        window.clearTimeout(refreshTimerRef.current);
-      }
-      if (toastTimeoutRef.current) {
-        window.clearTimeout(toastTimeoutRef.current);
-      }
+      if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
+      if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     };
   }, [loadGroupsData]);
 
   useEffect(() => {
     if (!supabase || !user) return undefined;
-
     const channel = supabase
       .channel(`evenly-groups-${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "groups" },
-        () => scheduleRefresh(user),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "group_members" },
-        () => scheduleRefresh(user),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "expenses" },
-        () => scheduleRefresh(user),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "groups" }, () => scheduleRefresh(user))
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_members" }, () => scheduleRefresh(user))
+      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, () => scheduleRefresh(user))
       .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return () => { void supabase.removeChannel(channel); };
   }, [scheduleRefresh, user]);
 
   useEffect(() => {
@@ -518,7 +393,7 @@ export default function GroupsPage() {
     return groups.map((group, index) => {
       const groupMembers = membersByGroup[group.id] || [];
       const groupExpenses = expensesByGroup[group.id] || [];
-      const myMembership = memberships.find((membership) => membership.group_id === group.id);
+      const myMembership = memberships.find((m) => m.group_id === group.id);
       const balancesByMember = computeBalancesForGroup(groupMembers, groupExpenses);
       const currentBalance = myMembership ? Number(balancesByMember[myMembership.id] || 0) / 100 : 0;
       const totalSpent = sumGroupTotal(groupExpenses);
@@ -528,9 +403,7 @@ export default function GroupsPage() {
       const tripDateLabel =
         groupMode === "trip"
           ? [group.start_date, group.end_date, group.starts_at, group.ends_at]
-              .filter(Boolean)
-              .slice(0, 2)
-              .join(" → ")
+              .filter(Boolean).slice(0, 2).join(" → ")
           : "";
 
       return {
@@ -543,60 +416,12 @@ export default function GroupsPage() {
         expenseCount: groupExpenses.length,
         totalSpent,
         balance: currentBalance,
-        cardColor:
-          group.card_color ||
-          group.color ||
-          cardColors[group.id] ||
-          getStableCardColor(group.id || group.name, index),
-        cardImage:
-          group.card_image ||
-          group.background_image ||
-          group.image_url ||
-          cardImages[group.id] ||
-          "",
+        cardColor: group.card_color || group.color || cardColors[group.id] || getStableCardColor(group.id || group.name, index),
+        cardImage: group.card_image || group.background_image || group.image_url || cardImages[group.id] || "",
         needsAttention: needsAttention(currentBalance),
       };
     });
   }, [cardColors, cardImages, expensesByGroup, groups, membersByGroup, memberships]);
-
-  const homeMetrics = useMemo(() => {
-    const membershipByGroupId = new Map(memberships.map((membership) => [membership.group_id, membership.id]));
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    let monthSpent = 0;
-    let monthExpenseCount = 0;
-
-    for (const [groupId, groupExpenses] of Object.entries(expensesByGroup || {})) {
-      const membershipId = membershipByGroupId.get(groupId);
-      if (!membershipId) continue;
-
-      for (const expense of groupExpenses || []) {
-        const createdAt = expense.created_at ? new Date(expense.created_at) : null;
-        if (createdAt && createdAt < startOfMonth) continue;
-
-        monthExpenseCount += 1;
-
-        const shares = computeExpenseShares(expense);
-        monthSpent += Number(shares[membershipId] || 0) / 100;
-      }
-    }
-
-    const netBalance = displayGroups.reduce((sum, group) => sum + Number(group.balance || 0), 0);
-    const actionGroup =
-      [...displayGroups]
-        .filter((group) => group.needsAttention)
-        .sort((left, right) => Math.abs(right.balance) - Math.abs(left.balance))[0] || null;
-
-    return {
-      activeGroupCount: displayGroups.length,
-      netBalance,
-      monthSpent,
-      monthExpenseCount,
-      actionGroup,
-    };
-  }, [displayGroups, expensesByGroup, memberships]);
 
   const stackHeight = useMemo(
     () => (displayGroups.length ? 252 + Math.max(0, displayGroups.length - 1) * 64 : 0),
@@ -604,220 +429,83 @@ export default function GroupsPage() {
   );
 
   const stackGap = 64;
-  const homeSubtitle =
-    homeMetrics.netBalance > 0
-      ? "You’re owed across your shared spaces."
-      : homeMetrics.netBalance < 0
-        ? "You’ve got a couple balances to clear."
-        : "You’re settled up everywhere.";
 
   useEffect(() => {
-    displayGroups.slice(0, 4).forEach((group) => {
-      router.prefetch(`/groups/${group.id}`);
-    });
+    displayGroups.slice(0, 4).forEach((group) => router.prefetch(`/groups/${group.id}`));
   }, [displayGroups, router]);
 
   const handleRefresh = useCallback(async () => {
     if (!user) return;
     await loadGroupsData(user, { refresh: true });
-    showToast("Groups refreshed");
+    showToast("Refreshed");
   }, [loadGroupsData, showToast, user]);
 
-  const handleOpenRotationComplete = useCallback(async (rotation) => {
-    setRotationToComplete(rotation);
+  const handleOpenGroup = useCallback((group) => {
+    router.push(`/groups/${group.id}`);
+  }, [router]);
 
+  const handleCreateGroup = useCallback(async ({ name, mode, tripStartDate, tripEndDate, color, imageData }) => {
+    if (!supabase || !user) return { ok: false, message: "Sign in first." };
     try {
-      const recentExpenses = await loadRecentGroupExpenses(supabase, rotation.group_id, 6);
-      setRecentRotationExpenses(recentExpenses);
+      const { group, code } = await createGroupWithMembership(supabase, user, profileName, name, { mode, tripStartDate, tripEndDate });
+      persistCardColor(group.id, color);
+      if (imageData) persistCardImage(group.id, imageData);
+      await updateGroupCardColor(supabase, group.id, color);
+      if (imageData) await updateGroupCardImage(supabase, group.id, imageData);
+      await loadGroupsData(user, { refresh: true });
+      showToast(`${name} is ready`);
+      return { ok: true, code };
     } catch (error) {
       console.error(error);
-      setRecentRotationExpenses([]);
+      return { ok: false, message: error.message || "Could not create the group right now." };
     }
-  }, []);
+  }, [loadGroupsData, persistCardColor, persistCardImage, profileName, showToast, user]);
 
-  const handleCompleteRotation = useCallback(
-    async ({ linkedExpenseId, note }) => {
-      if (!supabase || !rotationToComplete || !user?.id) return;
-
-      const previousRotations = turnRotations;
-      setIsCompletingRotation(true);
-      setTurnRotations((current) => current.filter((rotation) => rotation.id !== rotationToComplete.id));
-
-      try {
-        await completeRotationRecord(supabase, rotationToComplete, {
-          completedBy: user.id,
-          linkedExpenseId,
-          note,
-        });
-        setRotationToComplete(null);
-        setRecentRotationExpenses([]);
-        await loadGroupsData(user, { refresh: true });
-        import("canvas-confetti")
-          .then((module) => module.default?.({
-            particleCount: 70,
-            spread: 58,
-            origin: { y: 0.66 },
-            colors: ["#5F7D6A", "#8BA888", "#C0CFB2", "#D4A574"],
-          }))
-          .catch(() => {});
-        showToast("Turn completed");
-      } catch (error) {
-        console.error(error);
-        setTurnRotations(previousRotations);
-        showToast("Could not complete that turn yet");
-      } finally {
-        setIsCompletingRotation(false);
-      }
-    },
-    [loadGroupsData, rotationToComplete, showToast, turnRotations, user],
-  );
-
-  const handleOpenGroup = useCallback(
-    (group) => {
-      router.push(`/groups/${group.id}`);
-    },
-    [router],
-  );
-
-  const handleCreateGroup = useCallback(
-    async ({ name, mode, tripStartDate, tripEndDate, color, imageData }) => {
-      if (!supabase || !user) {
-        return { ok: false, message: "Sign in first so we can create the group." };
-      }
-
-      try {
-        const { group, code } = await createGroupWithMembership(supabase, user, profileName, name, {
-          mode,
-          tripStartDate,
-          tripEndDate,
-        });
-        persistCardColor(group.id, color);
-        if (imageData) {
-          persistCardImage(group.id, imageData);
-        }
-        const syncedColor = await updateGroupCardColor(supabase, group.id, color);
-        if (!syncedColor) {
-          showToast("Color saved on this device. Shared sync still needs a backend field.");
-        }
-        if (imageData) {
-          const syncedImage = await updateGroupCardImage(supabase, group.id, imageData);
-          if (!syncedImage) {
-            showToast("Image saved on this device. Shared sync still needs a backend field.");
-          }
-        }
-        await loadGroupsData(user, { refresh: true });
-        showToast(`${name} is ready`);
-
-        return {
-          ok: true,
-          code,
-        };
-      } catch (error) {
-        console.error(error);
-        return {
-          ok: false,
-          message: error.message || "Could not create the group right now.",
-        };
-      }
-    },
-    [loadGroupsData, persistCardColor, persistCardImage, profileName, showToast, user],
-  );
-
-  const handleJoinGroup = useCallback(
-    async (rawCode) => {
-      if (!supabase || !user) {
-        return { ok: false, message: "Sign in first so we can join the group." };
-      }
-
-      try {
-        const joinedGroup = await joinGroupByCode(supabase, user, profileName, rawCode);
-        await loadGroupsData(user, { refresh: true });
-        setPendingInviteCode("");
-        setPrefillJoinCode("");
-        window.localStorage.removeItem("evenly-pending-join");
-        if (inviteCodeFromUrl) {
-          router.replace("/groups");
-        }
-        showToast(`Joined ${joinedGroup.name}`);
-        return { ok: true };
-      } catch (error) {
-        console.error(error);
-        return {
-          ok: false,
-          message: error.message || "Could not join the group right now.",
-        };
-      }
-    },
-    [inviteCodeFromUrl, loadGroupsData, profileName, router, showToast, user],
-  );
-
-  const handleOpenSettings = useCallback(() => {
-    router.push("/settings");
-  }, [router]);
+  const handleJoinGroup = useCallback(async (rawCode) => {
+    if (!supabase || !user) return { ok: false, message: "Sign in first." };
+    try {
+      const joinedGroup = await joinGroupByCode(supabase, user, profileName, rawCode);
+      await loadGroupsData(user, { refresh: true });
+      setPendingInviteCode("");
+      setPrefillJoinCode("");
+      window.localStorage.removeItem("evenly-pending-join");
+      if (inviteCodeFromUrl) router.replace("/groups");
+      showToast(`Joined ${joinedGroup.name}`);
+      return { ok: true };
+    } catch (error) {
+      console.error(error);
+      return { ok: false, message: error.message || "Could not join the group right now." };
+    }
+  }, [inviteCodeFromUrl, loadGroupsData, profileName, router, showToast, user]);
 
   const handleCloseJoinModal = useCallback(() => {
     setIsJoinOpen(false);
     setPendingInviteCode("");
     setPrefillJoinCode("");
     window.localStorage.removeItem("evenly-pending-join");
-    if (inviteCodeFromUrl) {
-      router.replace("/groups");
-    }
+    if (inviteCodeFromUrl) router.replace("/groups");
   }, [inviteCodeFromUrl, router]);
 
-  const handleCardColorChange = useCallback(
-    async (group, nextColor) => {
-      persistCardColor(group.id, nextColor);
-      const syncedColor = await updateGroupCardColor(supabase, group.id, nextColor);
-      setPreviewState((previous) =>
-        previous.group?.id === group.id
-          ? {
-              ...previous,
-              group: {
-                ...previous.group,
-                cardColor: nextColor,
-              },
-            }
-          : previous,
-      );
-      showToast(
-        syncedColor
-          ? `${group.name} card updated`
-          : `${group.name} color saved here. Shared sync still needs a backend field.`,
-      );
-    },
-    [persistCardColor, showToast],
-  );
+  const handleCardColorChange = useCallback(async (group, nextColor) => {
+    persistCardColor(group.id, nextColor);
+    const synced = await updateGroupCardColor(supabase, group.id, nextColor);
+    setPreviewState((prev) =>
+      prev.group?.id === group.id ? { ...prev, group: { ...prev.group, cardColor: nextColor } } : prev,
+    );
+    showToast(synced ? `${group.name} updated` : `${group.name} color saved here.`);
+  }, [persistCardColor, showToast]);
 
-  const handleCardImageChange = useCallback(
-    async (group, imageData) => {
-      persistCardImage(group.id, imageData);
-      const syncedImage = await updateGroupCardImage(supabase, group.id, imageData);
-      setPreviewState((previous) =>
-        previous.group?.id === group.id
-          ? {
-              ...previous,
-              group: {
-                ...previous.group,
-                cardImage: imageData,
-              },
-            }
-          : previous,
-      );
-      showToast(
-        syncedImage
-          ? `${group.name} background updated`
-          : `${group.name} image saved here. Shared sync still needs a backend field.`,
-      );
-    },
-    [persistCardImage, showToast],
-  );
+  const handleCardImageChange = useCallback(async (group, imageData) => {
+    persistCardImage(group.id, imageData);
+    const synced = await updateGroupCardImage(supabase, group.id, imageData);
+    setPreviewState((prev) =>
+      prev.group?.id === group.id ? { ...prev, group: { ...prev.group, cardImage: imageData } } : prev,
+    );
+    showToast(synced ? `${group.name} updated` : `${group.name} image saved here.`);
+  }, [persistCardImage, showToast]);
 
   const handlePreviewGroup = useCallback((group) => {
-    setPreviewState({
-      group,
-      openedAt: Date.now(),
-    });
+    setPreviewState({ group, openedAt: Date.now() });
   }, []);
 
   const handleClosePreview = useCallback(() => {
@@ -832,289 +520,121 @@ export default function GroupsPage() {
       transition={pageTransition.transition}
     >
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/94 px-5 py-3 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-[420px] items-center justify-between">
+        <div className="mx-auto flex w-full max-w-[460px] items-center justify-between">
           <div>
-            <div
-              className="text-[24px] font-semibold leading-none tracking-[-0.04em] text-[var(--accent-strong)]"
-              style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
-            >
-              Evenly
-            </div>
-            <div className="mt-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
-              Home
+            <div className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Groups</div>
+            <div className="text-[13px] text-[var(--text-muted)]">
+              {displayGroups.length ? `${displayGroups.length} active` : "Create or join one"}
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <IconButton label="Refresh home" onClick={() => void handleRefresh()} spinning={isRefreshing}>
-              <RefreshIcon />
-            </IconButton>
-            <button
-              type="button"
-              onClick={handleOpenSettings}
-              aria-label="Open settings"
-              className="rounded-full transition active:scale-[0.98]"
-            >
-              <AvatarIcon label={profileName || getDisplayNameFromUser(user, "") || "E"} />
-            </button>
-          </div>
+          <IconButton label="Refresh" onClick={() => void handleRefresh()} spinning={isRefreshing}>
+            <RefreshIcon />
+          </IconButton>
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[420px] px-5 pt-5 pb-28">
-        {user ? (
-          <>
-            <section className="rounded-[30px] border border-[var(--border)] bg-[linear-gradient(180deg,var(--surface)_0%,var(--surface-soft)_100%)] px-5 py-6 shadow-[var(--shadow-soft)]">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-                    Hi {profileName || getDisplayNameFromUser(user, "") || "there"}
-                  </div>
-                  <div className="mt-2 text-[24px] font-bold tracking-[-0.04em] text-[var(--text)]">
-                    {homeSubtitle}
-                  </div>
-                </div>
-                {homeMetrics.actionGroup ? (
-                  <div className="rounded-full bg-[#EAF2EC] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#3A4E43]">
-                    Action needed
-                  </div>
-                ) : null}
-              </div>
+      <div className="mx-auto w-full max-w-[460px] px-5 pt-5 pb-28">
+        {/* Action buttons */}
+        {user && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => { setCreateMode("group"); setIsCreateOpen(true); }}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
+            >
+              <PlusIcon />
+              New group
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreateMode("trip"); setIsCreateOpen(true); }}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+            >
+              <PlusIcon />
+              New trip
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsJoinOpen(true)}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+            >
+              Join
+            </button>
+          </div>
+        )}
 
-              <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-                Net balance
-              </div>
-              <div
-                className={`mt-2 text-[46px] font-bold leading-none tracking-[-0.06em] ${
-                  homeMetrics.netBalance > 0
-                    ? "text-[var(--success)]"
-                    : homeMetrics.netBalance < 0
-                      ? "text-[var(--danger)]"
-                      : "text-[var(--text)]"
-                }`}
-              >
-                {formatSignedCurrency(homeMetrics.netBalance)}
-              </div>
-              <div className="mt-2 text-[13px] text-[var(--text-soft)]">
-                across {homeMetrics.activeGroupCount} {homeMetrics.activeGroupCount === 1 ? "group" : "groups"}
-              </div>
-            </section>
-
-            {homeMetrics.activeGroupCount ? (
-              <section className="mt-4 grid grid-cols-3 gap-3">
-                <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)]">
-                  <div className="text-[18px] font-semibold tracking-[-0.04em] text-[var(--text)]">
-                    ${Math.round(homeMetrics.monthSpent)}
-                  </div>
-                  <div className="mt-1 text-[12px] font-medium text-[var(--text-muted)]">spent this month</div>
-                </div>
-                <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)]">
-                  <div className="text-[18px] font-semibold tracking-[-0.04em] text-[var(--text)]">
-                    {homeMetrics.activeGroupCount}
-                  </div>
-                  <div className="mt-1 text-[12px] font-medium text-[var(--text-muted)]">active groups</div>
-                </div>
-                <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)]">
-                  <div className="text-[18px] font-semibold tracking-[-0.04em] text-[var(--text)]">
-                    {homeMetrics.monthExpenseCount}
-                  </div>
-                  <div className="mt-1 text-[12px] font-medium text-[var(--text-muted)]">expenses this month</div>
-                </div>
-              </section>
-            ) : null}
-
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode("group");
-                  setIsCreateOpen(true);
-                }}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full bg-[var(--accent)] px-2 text-center text-[12px] font-semibold whitespace-nowrap text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98] min-[390px]:px-3 min-[390px]:text-[13px]"
-              >
-                <span className="hidden min-[390px]:inline-flex">
-                  <PlusIcon />
-                </span>
-                Create group
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode("trip");
-                  setIsCreateOpen(true);
-                }}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 text-center text-[12px] font-semibold whitespace-nowrap text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98] min-[390px]:px-3 min-[390px]:text-[13px]"
-              >
-                <span className="hidden min-[390px]:inline-flex">
-                  <PlusIcon />
-                </span>
-                Create trip
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsJoinOpen(true)}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 text-center text-[12px] font-semibold whitespace-nowrap text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98] min-[390px]:px-3 min-[390px]:text-[13px]"
-              >
-                Join by code
-              </button>
-            </div>
-
-            {homeMetrics.actionGroup ? (
-              <section className="mt-5">
-                <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-                  Action needed
-                </div>
-                <div className="mt-3 rounded-[24px] border border-[rgba(0,112,243,0.18)] bg-[var(--surface)] px-4 py-4 text-center shadow-[var(--shadow-soft)]">
-                  <div className="text-[15px] font-semibold text-[var(--text)]">{homeMetrics.actionGroup.name}</div>
-                  <div className="mt-2 text-[13px] text-[var(--text-muted)]">
-                    {homeMetrics.actionGroup.balance < 0 ? "You owe this group" : "You’re owed in this group"}
-                  </div>
-                  <div className="mt-1 text-[26px] font-bold tracking-[-0.05em] text-[var(--text)]">
-                    {formatSignedCurrency(homeMetrics.actionGroup.balance)}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenGroup(homeMetrics.actionGroup)}
-                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#0070F3] px-4 text-center text-[13px] font-semibold whitespace-nowrap text-white transition hover:opacity-90 active:scale-[0.98]"
-                  >
-                    Settle now
-                  </button>
-                </div>
-              </section>
-            ) : null}
-
-            {turnRotations.length ? (
-              <section className="mt-5">
-                <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-                  Whose turn?
-                </div>
-                <div className="mt-1 text-[18px] font-semibold tracking-[-0.03em] text-[var(--text)]">
-                  Shared jobs that need attention
-                </div>
-                <div className="mt-3 space-y-3">
-                  {turnRotations.slice(0, 2).map((rotation) => (
-                    <RotationCard
-                      key={rotation.id}
-                      rotation={rotation}
-                      highlight
-                      onMarkComplete={handleOpenRotationComplete}
-                      showGroupName
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-          </>
-        ) : null}
-
+        {/* States */}
         {!supabase ? (
-          <section className="pt-8">
-            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
-              <h2 className="text-[24px] font-bold text-[var(--text)]">Connect Supabase first</h2>
-              <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
-                Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`
-                or Vercel, then reload this page.
-              </p>
-            </div>
-          </section>
+          <div className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+            <h2 className="text-[20px] font-bold text-[var(--text)]">Connect Supabase first</h2>
+            <p className="mt-2 text-[14px] leading-6 text-[var(--text-muted)]">
+              Add your Supabase keys in .env.local or Vercel, then reload.
+            </p>
+          </div>
         ) : isLoading ? (
-          <section className="pt-8">
-            <div className="mx-auto w-[88%] max-w-[360px]">
-              <div className="aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface)]" />
-              <div className="-mt-[194px] ml-0 aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface-muted)]" />
-              <div className="-mt-[194px] ml-0 aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface-soft)]" />
-            </div>
-          </section>
+          <div className="mx-auto w-[88%] max-w-[360px]">
+            <div className="aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface)]" />
+            <div className="-mt-[194px] aspect-[3.375/2.125] animate-pulse rounded-[28px] border border-[var(--border)] bg-[var(--surface-muted)]" />
+          </div>
         ) : !user ? (
-          <section className="pt-8">
-            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
-              <h2 className="text-[24px] font-bold text-[var(--text)]">Sign in to see your groups</h2>
-              <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
-                Log in on the welcome screen, then come right back here.
-              </p>
-              <button
-                type="button"
-                onClick={() => router.push("/")}
-                className="mt-6 rounded-full bg-[var(--surface-accent)] px-5 py-3 text-[15px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft-hover)] active:scale-[0.98]"
-              >
-                Back to welcome
-              </button>
-            </div>
-          </section>
+          <div className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+            <h2 className="text-[20px] font-bold text-[var(--text)]">Sign in to see your groups</h2>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              className="mt-4 rounded-full bg-[var(--surface-accent)] px-5 py-3 text-[15px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft-hover)]"
+            >
+              Sign in
+            </button>
+          </div>
         ) : displayGroups.length === 0 ? (
-          <section className="pt-8">
-            <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-              Your groups
-            </div>
-
-            <div className="mt-4 space-y-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode("trip");
-                  setIsCreateOpen(true);
-                }}
-                className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
-              >
-                <div className="w-full rounded-[24px] bg-[var(--surface-soft)] px-6 py-6">
-                  <div className="text-[18px] font-semibold whitespace-nowrap text-[var(--text)] min-[390px]:text-[20px]">
-                    Create your first trip
-                  </div>
-                  <p className="mt-2 text-[14px] leading-5 text-[var(--text-muted)]">
-                    Competitions, vacations, and short-run spending in one shared card.
-                  </p>
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => { setCreateMode("trip"); setIsCreateOpen(true); }}
+              className="mx-auto flex w-full items-center justify-center rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
+            >
+              <div className="w-full rounded-[20px] bg-[var(--surface-soft)] px-6 py-5">
+                <div className="text-[20px] font-semibold text-[var(--text)]">Create your first trip</div>
+                <p className="mt-1 text-[14px] leading-5 text-[var(--text-muted)]">
+                  Competitions, vacations, shared spending.
+                </p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreateMode("group"); setIsCreateOpen(true); }}
+              className="mx-auto flex w-full items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
+            >
+              <div className="flex w-full flex-col items-center rounded-[20px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-6 py-5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent-strong)]">
+                  <PlusIcon />
                 </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode("group");
-                  setIsCreateOpen(true);
-                }}
-                className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
-              >
-                <div className="w-full rounded-[24px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-6 py-6">
-                  <div className="flex h-full flex-col items-center justify-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent-strong)]">
-                      <PlusIcon />
-                    </div>
-                    <h2 className="mt-5 text-[18px] font-semibold whitespace-nowrap text-[var(--text)] min-[390px]:text-[20px]">
-                      Create your first group
-                    </h2>
-                    <p className="mt-2 max-w-[230px] text-[14px] leading-5 text-[var(--text-muted)]">
-                      Start with roommates, housemates, or the people you split every month with.
-                    </p>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            <div className="mt-6 text-center">
+                <div className="mt-4 text-[20px] font-semibold text-[var(--text)]">Create a group</div>
+                <p className="mt-1 text-[14px] leading-5 text-[var(--text-muted)]">
+                  Roommates, housemates, monthly splits.
+                </p>
+              </div>
+            </button>
+            <div className="text-center">
               <button
                 type="button"
                 onClick={() => setIsJoinOpen(true)}
-                className="text-[15px] font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
+                className="text-[15px] font-semibold text-[var(--accent)]"
               >
                 Join with a code instead
               </button>
             </div>
-          </section>
+          </div>
         ) : (
-          <section className="pt-8">
-            <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-              Your groups
-            </div>
+          <div>
             <div className="mx-auto w-[88%] max-w-[360px]">
               <div className="relative" style={{ height: `${stackHeight}px` }}>
                 {displayGroups.map((group, index) => (
                   <div
                     key={group.id}
                     className="absolute inset-x-0"
-                    style={{
-                      top: `${(displayGroups.length - 1 - index) * stackGap}px`,
-                      zIndex: displayGroups.length - index,
-                    }}
+                    style={{ top: `${(displayGroups.length - 1 - index) * stackGap}px`, zIndex: displayGroups.length - index }}
                   >
                     <GroupCard
                       group={group}
@@ -1129,17 +649,14 @@ export default function GroupsPage() {
                 ))}
               </div>
             </div>
-
-            <div className="mt-6 text-center">
-              <div className="mt-2 text-[13px] text-[var(--text-soft)]">
-                Tap a card to open it. Press and hold to peek. Tap <span className="font-semibold text-[var(--text-muted)]">Color</span> to change the top card.
-              </div>
+            <div className="mt-5 text-center text-[13px] text-[var(--text-soft)]">
+              Tap to open · Hold to peek · Change colors with the card menu
             </div>
-          </section>
+          </div>
         )}
 
         {errorMessage ? (
-          <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[14px] font-medium text-[var(--danger)]">
+          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[14px] font-medium text-[var(--danger)]">
             {errorMessage}
           </div>
         ) : null}
@@ -1152,21 +669,11 @@ export default function GroupsPage() {
       ) : null}
 
       {isCreateOpen ? (
-        <CreateGroupModal
-          isOpen={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
-          onCreate={handleCreateGroup}
-          mode={createMode}
-        />
+        <CreateGroupModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onCreate={handleCreateGroup} mode={createMode} />
       ) : null}
 
       {isJoinOpen ? (
-        <JoinGroupModal
-          isOpen={isJoinOpen}
-          onClose={handleCloseJoinModal}
-          onJoin={handleJoinGroup}
-          initialCode={prefillJoinCode}
-        />
+        <JoinGroupModal isOpen={isJoinOpen} onClose={handleCloseJoinModal} onJoin={handleJoinGroup} initialCode={prefillJoinCode} />
       ) : null}
 
       <GroupPreviewOverlay
@@ -1176,21 +683,6 @@ export default function GroupsPage() {
         onColorChange={handleCardColorChange}
         onImageChange={handleCardImageChange}
       />
-
-      {rotationToComplete ? (
-        <CompleteRotationModal
-          key={`home-rotation-${rotationToComplete.id}`}
-          isOpen={Boolean(rotationToComplete)}
-          rotation={rotationToComplete}
-          recentExpenses={recentRotationExpenses}
-          onClose={() => {
-            setRotationToComplete(null);
-            setRecentRotationExpenses([]);
-          }}
-          onConfirm={handleCompleteRotation}
-          isSubmitting={isCompletingRotation}
-        />
-      ) : null}
     </motion.main>
   );
 }
