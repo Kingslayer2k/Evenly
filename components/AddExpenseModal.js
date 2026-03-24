@@ -28,23 +28,44 @@ export default function AddExpenseModal({
   contacts = [],
   initialPayerId,
   rotations = [],
+  initialExpense = null,
 }) {
   const memberIds = (members || []).map((member) => member.id);
   const contactIds = (contacts || []).map((contact) => contact.id);
-  const [title, setTitle] = useState("");
-  const [selectedEmoji, setSelectedEmoji] = useState("💸");
-  const [amount, setAmount] = useState("");
-  const [paidBy, setPaidBy] = useState(initialPayerId || memberIds[0] || "");
-  const [splitMode, setSplitMode] = useState("equal");
-  const [splitMethod, setSplitMethod] = useState("even");
-  const [selectedParticipants, setSelectedParticipants] = useState(memberIds);
+  const isEditing = Boolean(initialExpense?.id);
+
+  const initialTitle = isEditing
+    ? stripExpenseEmojiPrefix(initialExpense.title || initialExpense.name || initialExpense.description || "").trim()
+    : "";
+  const initialEmoji = isEditing ? getExpenseEmoji(initialExpense) : "💸";
+  const initialAmount = isEditing
+    ? String(Number(initialExpense.amount_cents || 0) / 100)
+    : "";
+  const initialPaidBy = isEditing
+    ? initialExpense.paid_by
+    : (initialPayerId || memberIds[0] || "");
+  const initialSplitMode = isEditing && initialExpense.split_type === "custom" ? "custom" : "equal";
+  const initialSplitMethod = isEditing ? (initialExpense.split_method || "even") : "even";
+  const initialParticipants = isEditing && Array.isArray(initialExpense.participants)
+    ? initialExpense.participants
+    : memberIds;
+  const initialFairSplitDetails = isEditing ? (initialExpense.split_details?.fair || null) : null;
+  const initialCustomAmounts = memberIds.reduce((acc, memberId) => {
+    acc[memberId] = isEditing && initialExpense.split_type === "custom" && initialExpense.shares?.[memberId]
+      ? String(Number(initialExpense.shares[memberId]) / 100)
+      : "";
+    return acc;
+  }, {});
+
+  const [title, setTitle] = useState(initialTitle);
+  const [selectedEmoji, setSelectedEmoji] = useState(initialEmoji);
+  const [amount, setAmount] = useState(initialAmount);
+  const [paidBy, setPaidBy] = useState(initialPaidBy);
+  const [splitMode, setSplitMode] = useState(initialSplitMode);
+  const [splitMethod, setSplitMethod] = useState(initialSplitMethod);
+  const [selectedParticipants, setSelectedParticipants] = useState(initialParticipants);
   const [selectedContactIds, setSelectedContactIds] = useState([]);
-  const [customAmounts, setCustomAmounts] = useState(
-    memberIds.reduce((accumulator, memberId) => {
-      accumulator[memberId] = "";
-      return accumulator;
-    }, {}),
-  );
+  const [customAmounts, setCustomAmounts] = useState(initialCustomAmounts);
   const [customContactAmounts, setCustomContactAmounts] = useState(
     contactIds.reduce((accumulator, contactId) => {
       accumulator[contactId] = "";
@@ -53,10 +74,10 @@ export default function AddExpenseModal({
   );
   const [contextId, setContextId] = useState(contexts?.[0]?.id || "");
   const [contextName, setContextName] = useState(contexts?.[0]?.name || "");
+  const [fairSplitDetails, setFairSplitDetails] = useState(initialFairSplitDetails);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isFairSplitOpen, setIsFairSplitOpen] = useState(false);
-  const [fairSplitDetails, setFairSplitDetails] = useState(null);
   const [error, setError] = useState("");
 
   const amountCents = useMemo(() => toCents(amount), [amount]);
@@ -275,9 +296,9 @@ export default function AddExpenseModal({
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-[28px] font-bold tracking-[-0.04em] text-[var(--text)]">Add expense</h2>
+            <h2 className="text-[28px] font-bold tracking-[-0.04em] text-[var(--text)]">{isEditing ? "Edit expense" : "Add expense"}</h2>
             <p className="mt-2 text-[14px] leading-5 text-[var(--text-muted)]">
-              Drop in what happened and we&apos;ll update everyone live.
+              {isEditing ? "Fix anything and save \u2014 balances update instantly." : "Drop in what happened and we\u2019ll update everyone live."}
             </p>
           </div>
 
@@ -600,7 +621,7 @@ export default function AddExpenseModal({
               disabled={isSubmitting}
               className="min-h-11 rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Saving..." : "Save expense"}
+              {isSubmitting ? "Saving..." : isEditing ? "Save changes" : "Save expense"}
             </button>
           </div>
         </form>

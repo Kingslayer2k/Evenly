@@ -33,6 +33,15 @@ function TrashIcon() {
   );
 }
 
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
 function getInitials(name) {
   const parts = String(name || "")
     .trim()
@@ -68,6 +77,7 @@ export default function ExpenseDetail({
   onClose,
   onDelete,
   onChangePayer,
+  onEdit,
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -191,11 +201,21 @@ export default function ExpenseDetail({
             ) : null}
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {onEdit ? (
+              <button
+                type="button"
+                onClick={() => onEdit?.(expense)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)] active:scale-[0.99]"
+              >
+                <EditIcon />
+                Edit
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => onChangePayer?.(expense)}
-              className="min-h-11 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)] active:scale-[0.99]"
+              className={`min-h-11 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)] active:scale-[0.99] ${onEdit ? "" : "col-span-2"}`}
             >
               Change who paid
             </button>
@@ -204,7 +224,7 @@ export default function ExpenseDetail({
               <button
                 type="button"
                 onClick={() => setShowDeleteDialog(true)}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--danger)] bg-transparent px-4 text-[15px] font-medium text-[var(--danger)] transition hover:bg-[color:rgba(220,38,38,0.08)] active:bg-[color:rgba(220,38,38,0.14)]"
+                className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--danger)] bg-transparent px-4 text-[15px] font-medium text-[var(--danger)] transition hover:bg-[color:rgba(220,38,38,0.08)] active:bg-[color:rgba(220,38,38,0.14)]"
               >
                 <TrashIcon />
                 Delete expense

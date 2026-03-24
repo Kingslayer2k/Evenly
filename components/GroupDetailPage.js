@@ -14,6 +14,7 @@ import {
   loadUserContacts,
   createSettlementRecord,
   createExpenseRecord,
+  updateExpenseRecord,
   deleteGroupRecord,
   deleteExpenseRecord,
   leaveGroupRecord,
@@ -185,6 +186,7 @@ export default function GroupDetailPage({ groupId }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [toast, setToast] = useState("");
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseToEdit, setExpenseToEdit] = useState(null);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [expenseToReassign, setExpenseToReassign] = useState(null);
   const [isDeletingExpense, setIsDeletingExpense] = useState(false);
@@ -498,6 +500,45 @@ export default function GroupDetailPage({ groupId }) {
       }
     },
     [groupId, loadDetail, showToast, user],
+  );
+
+  const handleEditExpense = useCallback(
+    async ({
+      title,
+      amountCents,
+      paidBy,
+      participants,
+      splitType,
+      splitMethod,
+      shares,
+      splitDetails,
+    }) => {
+      if (!supabase || !user || !expenseToEdit?.id) {
+        return { ok: false, message: "Sign in first so we can save the change." };
+      }
+
+      try {
+        await updateExpenseRecord(supabase, expenseToEdit.id, {
+          title,
+          amountCents,
+          paidBy,
+          participants,
+          splitType,
+          splitMethod,
+          shares,
+          splitDetails,
+        });
+
+        setExpenseToEdit(null);
+        await loadDetail(user, { refresh: true });
+        showToast("Expense updated");
+        return { ok: true };
+      } catch (error) {
+        console.error(error);
+        return { ok: false, message: error.message || "Could not update the expense." };
+      }
+    },
+    [expenseToEdit?.id, loadDetail, showToast, user],
   );
 
   const handleCreateRotation = useCallback(
@@ -1302,6 +1343,21 @@ export default function GroupDetailPage({ groupId }) {
         />
       ) : null}
 
+      {expenseToEdit ? (
+        <AddExpenseModal
+          key={`edit-${expenseToEdit.id}`}
+          isOpen={Boolean(expenseToEdit)}
+          onClose={() => setExpenseToEdit(null)}
+          onSubmit={handleEditExpense}
+          members={members}
+          contexts={contexts}
+          contacts={contacts}
+          initialPayerId={membership?.id}
+          rotations={rotations}
+          initialExpense={expenseToEdit}
+        />
+      ) : null}
+
       {selectedExpense ? (
         <ExpenseDetail
           isOpen={Boolean(selectedExpense)}
@@ -1311,6 +1367,10 @@ export default function GroupDetailPage({ groupId }) {
           isDeleting={isDeletingExpense}
           onClose={() => setSelectedExpense(null)}
           onDelete={handleDeleteExpense}
+          onEdit={(expense) => {
+            setSelectedExpense(null);
+            setExpenseToEdit(expense);
+          }}
           onChangePayer={(expense) => {
             setSelectedExpense(null);
             setExpenseToReassign(expense);
