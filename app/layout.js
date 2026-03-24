@@ -31,8 +31,20 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
+  const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
+    : null;
+
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {supabaseHost ? (
+          <>
+            <link rel="preconnect" href={`https://${supabaseHost}`} />
+            <link rel="dns-prefetch" href={`https://${supabaseHost}`} />
+          </>
+        ) : null}
+      </head>
       <body
         className="min-h-screen antialiased transition-colors duration-300"
         style={{

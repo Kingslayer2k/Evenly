@@ -1,4 +1,4 @@
-const CACHE_NAME = "evenly-shell-v1";
+const CACHE_NAME = "evenly-shell-v2";
 const APP_SHELL = [
   "/",
   "/manifest.json",
@@ -28,25 +28,47 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") {
-    return;
-  }
+  if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
 
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+  if (url.origin !== self.location.origin) return;
 
+  // Navigation (opening the app): serve cached shell immediately,
+  // update cache in background so next open is also instant.
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match("/")),
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.match("/").then((cached) => {
+          const networkFetch = fetch(event.request).then((response) => {
+            if (response.ok) cache.put("/", response.clone());
+            return response;
+          });
+          return cached || networkFetch;
+        }),
+      ),
     );
     return;
   }
 
+  // Next.js static chunks have content-hash filenames — safe to cache forever (cache-first).
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+          }
+          return response;
+        });
+      }),
+    );
+    return;
+  }
+
+  // Images and manifest — cache-first.
   if (
-    url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/_next/image") ||
     url.pathname === "/manifest.json" ||
     url.pathname.endsWith(".png") ||
@@ -55,13 +77,11 @@ self.addEventListener("fetch", (event) => {
   ) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
-        if (cached) {
-          return cached;
-        }
-
+        if (cached) return cached;
         return fetch(event.request).then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          if (response.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+          }
           return response;
         });
       }),

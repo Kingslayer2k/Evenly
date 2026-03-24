@@ -39,6 +39,7 @@ import {
   sumGroupTotal,
 } from "../../lib/utils";
 import { pageTransition } from "../../lib/animations";
+import { readRuntimeCacheStale } from "../../lib/runtimeCache";
 
 const CreateGroupModal = dynamic(() => import("../../components/CreateGroupModal"), {
   loading: () => null,
@@ -339,13 +340,26 @@ export default function GroupsPage() {
         return;
       }
 
-      if (options.refresh) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-
       setErrorMessage("");
+
+      // Show stale cached data immediately so the UI renders without a spinner.
+      // Fresh data always loads in background and replaces it silently.
+      if (!options.refresh) {
+        const staleBundle = readRuntimeCacheStale(`groups:${currentUser.id}`);
+        if (staleBundle) {
+          setProfileName(staleBundle.profileName);
+          setGroups(staleBundle.groups);
+          setMemberships(staleBundle.memberships);
+          setMembersByGroup(staleBundle.membersByGroup);
+          setExpensesByGroup(staleBundle.expensesByGroup);
+          setIsLoading(false);
+          setIsRefreshing(true); // subtle indicator while fresh data arrives
+        } else {
+          setIsLoading(true); // first launch ever — show skeleton
+        }
+      } else {
+        setIsRefreshing(true);
+      }
 
       try {
         const [bundle, nextTurnRotations] = await Promise.all([
