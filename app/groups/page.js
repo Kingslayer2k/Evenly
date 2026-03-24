@@ -406,6 +406,11 @@ export default function GroupsPage() {
     if (nextInviteCode) {
       setInviteCodeFromUrl(nextInviteCode);
       setPendingInviteCode(nextInviteCode);
+      window.localStorage.setItem("evenly-pending-join", nextInviteCode);
+    } else {
+      // Recover a code that survived a navigation to auth and back
+      const stored = normalizeInviteCode(window.localStorage.getItem("evenly-pending-join") || "");
+      if (stored) setPendingInviteCode(stored);
     }
   }, [router]);
 
@@ -715,6 +720,7 @@ export default function GroupsPage() {
         await loadGroupsData(user, { refresh: true });
         setPendingInviteCode("");
         setPrefillJoinCode("");
+        window.localStorage.removeItem("evenly-pending-join");
         if (inviteCodeFromUrl) {
           router.replace("/groups");
         }
@@ -737,9 +743,10 @@ export default function GroupsPage() {
 
   const handleCloseJoinModal = useCallback(() => {
     setIsJoinOpen(false);
+    setPendingInviteCode("");
+    setPrefillJoinCode("");
+    window.localStorage.removeItem("evenly-pending-join");
     if (inviteCodeFromUrl) {
-      setPendingInviteCode("");
-      setPrefillJoinCode("");
       router.replace("/groups");
     }
   }, [inviteCodeFromUrl, router]);
