@@ -328,8 +328,9 @@ export default function GroupDetailPage({ groupId }) {
 
   useEffect(() => {
     router.prefetch("/groups");
+    router.prefetch("/activity");
     router.prefetch("/people");
-    router.prefetch("/me");
+    router.prefetch("/settings");
   }, [router]);
 
   useEffect(() => {

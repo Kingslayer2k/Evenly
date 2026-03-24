@@ -148,7 +148,9 @@ function GroupCard({
                 {group.name}
               </h3>
               <div className="mt-1 truncate text-[11px] font-medium leading-none text-white/82">
-                {group.memberPreview || "Just you for now"}
+                {group.mode === "trip"
+                  ? group.tripDateLabel || "Trip spending"
+                  : group.memberPreview || "Just you for now"}
               </div>
             </div>
 
@@ -169,7 +171,9 @@ function GroupCard({
                   {group.name}
                 </h3>
                 <p className="mt-3 max-w-[220px] truncate text-[14px] font-normal text-white/85">
-                  {group.memberPreview || "Just you for now"}
+                  {group.mode === "trip"
+                    ? group.tripDateLabel || "Short-run shared spending"
+                    : group.memberPreview || "Just you for now"}
                 </p>
               </div>
 
@@ -245,9 +249,9 @@ function GroupCard({
 
               <div className="mt-4 flex items-center justify-between gap-4 text-[12px] font-medium leading-[1.2] text-white/82">
                 <div className="truncate">
-                  {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"} • code {group.code}
+                  {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"} • {group.mode === "trip" ? "trip" : "group"}
                 </div>
-                <div className="shrink-0">{group.membersCount} members</div>
+                <div className="shrink-0">code {group.code}</div>
               </div>
             </div>
           </div>

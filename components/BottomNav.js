@@ -7,10 +7,18 @@ import { usePathname, useRouter } from "next/navigation";
 function GroupsIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="4" y="4" width="7" height="7" rx="1.5" />
-      <rect x="13" y="4" width="7" height="7" rx="1.5" />
-      <rect x="4" y="13" width="7" height="7" rx="1.5" />
-      <rect x="13" y="13" width="7" height="7" rx="1.5" />
+      <path d="M4 11.5 12 5l8 6.5" />
+      <path d="M6.5 10.5V19h11v-8.5" />
+      <path d="M10 19v-5h4v5" />
+    </svg>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 13h3l2.2-5 3.3 10 2.5-6H20" />
+      <path d="M4 6h16" opacity="0.35" />
     </svg>
   );
 }
@@ -26,25 +34,31 @@ function PeopleIcon() {
   );
 }
 
-function MeIcon() {
+function SettingsIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M5 20c0-3.2 3-5.5 7-5.5s7 2.3 7 5.5" />
+      <path d="M10.3 2.8h3.4l.6 2.2a7.8 7.8 0 0 1 1.8.8l2-1.2 2.4 2.4-1.2 2c.3.6.6 1.2.8 1.8l2.2.6v3.4l-2.2.6c-.2.6-.5 1.2-.8 1.8l1.2 2-2.4 2.4-2-1.2c-.6.3-1.2.6-1.8.8l-.6 2.2h-3.4l-.6-2.2a7.8 7.8 0 0 1-1.8-.8l-2 1.2-2.4-2.4 1.2-2a7.8 7.8 0 0 1-.8-1.8l-2.2-.6v-3.4l2.2-.6c.2-.6.5-1.2.8-1.8l-1.2-2 2.4-2.4 2 1.2c.6-.3 1.2-.6 1.8-.8l.6-2.2Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
 
 const NAV_ITEMS = [
-  { href: "/groups", label: "Groups", icon: GroupsIcon },
+  { href: "/groups", label: "Home", icon: GroupsIcon },
+  { href: "/activity", label: "Activity", icon: ActivityIcon },
   { href: "/people", label: "People", icon: PeopleIcon },
-  { href: "/me", label: "Me", icon: MeIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const shouldShow = pathname === "/groups" || pathname === "/people" || pathname === "/me";
+  const shouldShow =
+    pathname === "/groups" ||
+    pathname === "/activity" ||
+    pathname === "/people" ||
+    pathname === "/settings" ||
+    pathname === "/me";
 
   useEffect(() => {
     NAV_ITEMS.forEach((item) => {

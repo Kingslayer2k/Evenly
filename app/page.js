@@ -10,6 +10,24 @@ const AUTH_MODES = {
   LOG_IN: "log-in",
 };
 
+const SPACE_MODES = {
+  TRIP: "trip",
+  GROUP: "group",
+};
+
+const SPACE_MODE_STORAGE_KEY = "evenly-space-mode";
+
+function getStoredSpaceMode() {
+  if (typeof window === "undefined") return SPACE_MODES.GROUP;
+  const value = window.localStorage.getItem(SPACE_MODE_STORAGE_KEY);
+  return value === SPACE_MODES.TRIP ? SPACE_MODES.TRIP : SPACE_MODES.GROUP;
+}
+
+function setStoredSpaceMode(value) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SPACE_MODE_STORAGE_KEY, value);
+}
+
 function AuthModeToggle({ mode, onChange }) {
   return (
     <div className="mb-6 inline-flex rounded-full bg-[#E1F9D8] p-1 shadow-[0_4px_14px_rgba(95,125,106,0.08)]">
@@ -42,6 +60,7 @@ function AuthModeToggle({ mode, onChange }) {
 export default function OnboardingPage() {
   const router = useRouter();
   const [mode, setMode] = useState(AUTH_MODES.SIGN_UP);
+  const [spaceMode, setSpaceMode] = useState(() => getStoredSpaceMode());
   const [displayName, setDisplayName] = useState(() => getStoredDisplayName());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -140,7 +159,7 @@ export default function OnboardingPage() {
       }
 
       if (data.session?.user) {
-        router.replace("/groups");
+        router.replace(`/groups?compose=${spaceMode}`);
         return;
       }
 
@@ -211,6 +230,50 @@ export default function OnboardingPage() {
               resetMessages();
             }}
           />
+        </div>
+
+        <div className="mt-4 w-full max-w-[340px]">
+          <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#6B7280]">
+            What are you splitting?
+          </div>
+
+          <div className="mt-3 space-y-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSpaceMode(SPACE_MODES.TRIP);
+                setStoredSpaceMode(SPACE_MODES.TRIP);
+              }}
+              className={`w-full rounded-[18px] border px-4 py-4 text-left transition ${
+                spaceMode === SPACE_MODES.TRIP
+                  ? "border-[#5F7D6A] bg-[#F2F8F3] shadow-[0_8px_18px_rgba(95,125,106,0.08)]"
+                  : "border-[#E5E7EB] bg-white"
+              }`}
+            >
+              <div className="text-[18px] font-semibold text-[#1C1917]">Trip or event</div>
+              <div className="mt-1 text-[14px] leading-5 text-[#6B7280]">
+                Competition travel, vacations, weekend runs, and short shared spend.
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSpaceMode(SPACE_MODES.GROUP);
+                setStoredSpaceMode(SPACE_MODES.GROUP);
+              }}
+              className={`w-full rounded-[18px] border px-4 py-4 text-left transition ${
+                spaceMode === SPACE_MODES.GROUP
+                  ? "border-[#5F7D6A] bg-[#F2F8F3] shadow-[0_8px_18px_rgba(95,125,106,0.08)]"
+                  : "border-[#E5E7EB] bg-white"
+              }`}
+            >
+              <div className="text-[18px] font-semibold text-[#1C1917]">Roommates or housemates</div>
+              <div className="mt-1 text-[14px] leading-5 text-[#6B7280]">
+                Ongoing shared costs for apartments, dorms, and everyday house life.
+              </div>
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="w-full max-w-[340px]">

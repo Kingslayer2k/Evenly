@@ -99,7 +99,8 @@ export default function PeoplePage() {
 
   useEffect(() => {
     router.prefetch("/groups");
-    router.prefetch("/me");
+    router.prefetch("/activity");
+    router.prefetch("/settings");
   }, [router]);
 
   const filteredPeople = useMemo(() => {

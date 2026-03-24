@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import GroupCard from "../../components/GroupCard";
+import RotationCard from "../../components/RotationCard";
 import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import {
   prepareCardBackgroundImage,
@@ -15,14 +16,18 @@ import {
 } from "../../lib/cardAppearance";
 import { supabase } from "../../lib/supabase";
 import {
+  completeRotationRecord,
   createGroupWithMembership,
   joinGroupByCode,
+  loadRecentGroupExpenses,
   loadUserGroupsBundle,
+  loadUserTurnRotations,
   normalizeInviteCode,
   updateGroupCardColor,
   updateGroupCardImage,
 } from "../../lib/groupData";
 import {
+  computeExpenseShares,
   computeBalancesForGroup,
   formatBalance,
   formatCurrencyCompact,
@@ -41,7 +46,7 @@ const CreateGroupModal = dynamic(() => import("../../components/CreateGroupModal
 const JoinGroupModal = dynamic(() => import("../../components/JoinGroupModal"), {
   loading: () => null,
 });
-const SettingsMenu = dynamic(() => import("../../components/SettingsMenu"), {
+const CompleteRotationModal = dynamic(() => import("../../components/CompleteRotationModal"), {
   loading: () => null,
 });
 
@@ -55,14 +60,6 @@ function IconButton({ children, onClick, label, spinning = false }) {
     >
       <div className={spinning ? "animate-spin" : ""}>{children}</div>
     </button>
-  );
-}
-
-function HamburgerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 7h16M4 12h16M4 17h16" />
-    </svg>
   );
 }
 
@@ -80,6 +77,14 @@ function PlusIcon() {
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" />
     </svg>
+  );
+}
+
+function AvatarIcon({ label }) {
+  return (
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[15px] font-semibold text-[var(--accent-strong)]">
+      {String(label || "E").slice(0, 1).toUpperCase()}
+    </div>
   );
 }
 
@@ -105,6 +110,12 @@ function ImagePlusIcon() {
       <path d="M17 5h4" />
     </svg>
   );
+}
+
+function formatSignedCurrency(value) {
+  const amount = Number(value || 0);
+  const prefix = amount > 0 ? "+" : amount < 0 ? "-" : "";
+  return `${prefix}$${Math.abs(amount).toFixed(2)}`;
 }
 
 function GroupPreviewOverlay({ group, openedAt, onClose, onColorChange, onImageChange }) {
@@ -273,10 +284,14 @@ export default function GroupsPage() {
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState("");
   const [prefillJoinCode, setPrefillJoinCode] = useState("");
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createMode, setCreateMode] = useState("group");
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [previewState, setPreviewState] = useState({ group: null, openedAt: 0 });
+  const [turnRotations, setTurnRotations] = useState([]);
+  const [rotationToComplete, setRotationToComplete] = useState(null);
+  const [recentRotationExpenses, setRecentRotationExpenses] = useState([]);
+  const [isCompletingRotation, setIsCompletingRotation] = useState(false);
 
   const showToast = useCallback((message) => {
     if (toastTimeoutRef.current) {
@@ -318,6 +333,7 @@ export default function GroupsPage() {
         setMemberships([]);
         setMembersByGroup({});
         setExpensesByGroup({});
+        setTurnRotations([]);
         setIsLoading(false);
         setIsRefreshing(false);
         return;
@@ -332,12 +348,16 @@ export default function GroupsPage() {
       setErrorMessage("");
 
       try {
-        const bundle = await loadUserGroupsBundle(supabase, currentUser);
+        const [bundle, nextTurnRotations] = await Promise.all([
+          loadUserGroupsBundle(supabase, currentUser),
+          loadUserTurnRotations(supabase, currentUser),
+        ]);
         setProfileName(bundle.profileName);
         setGroups(bundle.groups);
         setMemberships(bundle.memberships);
         setMembersByGroup(bundle.membersByGroup);
         setExpensesByGroup(bundle.expensesByGroup);
+        setTurnRotations(nextTurnRotations);
       } catch (error) {
         console.error(error);
         setErrorMessage(error.message || "Could not load your groups yet.");
@@ -368,19 +388,26 @@ export default function GroupsPage() {
   }, []);
 
   useEffect(() => {
+    router.prefetch("/activity");
     router.prefetch("/people");
-    router.prefetch("/me");
+    router.prefetch("/settings");
   }, [router]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const nextInviteCode = normalizeInviteCode(params.get("join") || params.get("code") || "");
+    const composeMode = params.get("compose");
+    if (composeMode === "trip" || composeMode === "group") {
+      setCreateMode(composeMode);
+      setIsCreateOpen(true);
+      router.replace("/groups");
+    }
     if (nextInviteCode) {
       setInviteCodeFromUrl(nextInviteCode);
       setPendingInviteCode(nextInviteCode);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!supabase) {
@@ -418,6 +445,7 @@ export default function GroupsPage() {
         setMemberships([]);
         setMembersByGroup({});
         setExpensesByGroup({});
+        setTurnRotations([]);
         setIsLoading(false);
       }
     });
@@ -476,8 +504,20 @@ export default function GroupsPage() {
       const currentBalance = myMembership ? Number(balancesByMember[myMembership.id] || 0) / 100 : 0;
       const totalSpent = sumGroupTotal(groupExpenses);
 
+      const rawMode = String(group.group_type || group.type || "").toLowerCase();
+      const groupMode = rawMode === "trip" ? "trip" : "group";
+      const tripDateLabel =
+        groupMode === "trip"
+          ? [group.start_date, group.end_date, group.starts_at, group.ends_at]
+              .filter(Boolean)
+              .slice(0, 2)
+              .join(" → ")
+          : "";
+
       return {
         ...group,
+        mode: groupMode,
+        tripDateLabel,
         code: group.join_code || group.code || "------",
         memberPreview: getMemberPreview(groupMembers) || "Just you for now",
         membersCount: groupMembers.length,
@@ -500,12 +540,57 @@ export default function GroupsPage() {
     });
   }, [cardColors, cardImages, expensesByGroup, groups, membersByGroup, memberships]);
 
+  const homeMetrics = useMemo(() => {
+    const membershipByGroupId = new Map(memberships.map((membership) => [membership.group_id, membership.id]));
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    let monthSpent = 0;
+    let monthExpenseCount = 0;
+
+    for (const [groupId, groupExpenses] of Object.entries(expensesByGroup || {})) {
+      const membershipId = membershipByGroupId.get(groupId);
+      if (!membershipId) continue;
+
+      for (const expense of groupExpenses || []) {
+        const createdAt = expense.created_at ? new Date(expense.created_at) : null;
+        if (createdAt && createdAt < startOfMonth) continue;
+
+        monthExpenseCount += 1;
+
+        const shares = computeExpenseShares(expense);
+        monthSpent += Number(shares[membershipId] || 0) / 100;
+      }
+    }
+
+    const netBalance = displayGroups.reduce((sum, group) => sum + Number(group.balance || 0), 0);
+    const actionGroup =
+      [...displayGroups]
+        .filter((group) => group.needsAttention)
+        .sort((left, right) => Math.abs(right.balance) - Math.abs(left.balance))[0] || null;
+
+    return {
+      activeGroupCount: displayGroups.length,
+      netBalance,
+      monthSpent,
+      monthExpenseCount,
+      actionGroup,
+    };
+  }, [displayGroups, expensesByGroup, memberships]);
+
   const stackHeight = useMemo(
     () => (displayGroups.length ? 252 + Math.max(0, displayGroups.length - 1) * 64 : 0),
     [displayGroups.length],
   );
 
   const stackGap = 64;
+  const homeSubtitle =
+    homeMetrics.netBalance > 0
+      ? "You’re owed across your shared spaces."
+      : homeMetrics.netBalance < 0
+        ? "You’ve got a couple balances to clear."
+        : "You’re settled up everywhere.";
 
   useEffect(() => {
     displayGroups.slice(0, 4).forEach((group) => {
@@ -519,6 +604,55 @@ export default function GroupsPage() {
     showToast("Groups refreshed");
   }, [loadGroupsData, showToast, user]);
 
+  const handleOpenRotationComplete = useCallback(async (rotation) => {
+    setRotationToComplete(rotation);
+
+    try {
+      const recentExpenses = await loadRecentGroupExpenses(supabase, rotation.group_id, 6);
+      setRecentRotationExpenses(recentExpenses);
+    } catch (error) {
+      console.error(error);
+      setRecentRotationExpenses([]);
+    }
+  }, []);
+
+  const handleCompleteRotation = useCallback(
+    async ({ linkedExpenseId, note }) => {
+      if (!supabase || !rotationToComplete || !user?.id) return;
+
+      const previousRotations = turnRotations;
+      setIsCompletingRotation(true);
+      setTurnRotations((current) => current.filter((rotation) => rotation.id !== rotationToComplete.id));
+
+      try {
+        await completeRotationRecord(supabase, rotationToComplete, {
+          completedBy: user.id,
+          linkedExpenseId,
+          note,
+        });
+        setRotationToComplete(null);
+        setRecentRotationExpenses([]);
+        await loadGroupsData(user, { refresh: true });
+        import("canvas-confetti")
+          .then((module) => module.default?.({
+            particleCount: 70,
+            spread: 58,
+            origin: { y: 0.66 },
+            colors: ["#5F7D6A", "#8BA888", "#C0CFB2", "#D4A574"],
+          }))
+          .catch(() => {});
+        showToast("Turn completed");
+      } catch (error) {
+        console.error(error);
+        setTurnRotations(previousRotations);
+        showToast("Could not complete that turn yet");
+      } finally {
+        setIsCompletingRotation(false);
+      }
+    },
+    [loadGroupsData, rotationToComplete, showToast, turnRotations, user],
+  );
+
   const handleOpenGroup = useCallback(
     (group) => {
       router.push(`/groups/${group.id}`);
@@ -527,13 +661,17 @@ export default function GroupsPage() {
   );
 
   const handleCreateGroup = useCallback(
-    async ({ name, color, imageData }) => {
+    async ({ name, mode, tripStartDate, tripEndDate, color, imageData }) => {
       if (!supabase || !user) {
         return { ok: false, message: "Sign in first so we can create the group." };
       }
 
       try {
-        const { group, code } = await createGroupWithMembership(supabase, user, profileName, name);
+        const { group, code } = await createGroupWithMembership(supabase, user, profileName, name, {
+          mode,
+          tripStartDate,
+          tripEndDate,
+        });
         persistCardColor(group.id, color);
         if (imageData) {
           persistCardImage(group.id, imageData);
@@ -593,15 +731,8 @@ export default function GroupsPage() {
     [inviteCodeFromUrl, loadGroupsData, profileName, router, showToast, user],
   );
 
-  const handleLogout = useCallback(async () => {
-    if (!supabase) {
-      router.replace("/");
-      return;
-    }
-    await supabase.auth.signOut();
-    setPendingInviteCode("");
-    setPrefillJoinCode("");
-    router.replace("/");
+  const handleOpenSettings = useCallback(() => {
+    router.push("/settings");
   }, [router]);
 
   const handleCloseJoinModal = useCallback(() => {
@@ -679,52 +810,180 @@ export default function GroupsPage() {
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
     >
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-5 py-4 backdrop-blur-sm">
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/94 px-5 py-3 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[420px] items-center justify-between">
-          <IconButton label="Open settings" onClick={() => setIsSettingsOpen(true)}>
-            <HamburgerIcon />
-          </IconButton>
-
-          <div className="text-center">
+          <div>
             <div
-              className="text-[30px] font-semibold leading-none tracking-[-0.04em] text-[var(--accent-strong)]"
+              className="text-[24px] font-semibold leading-none tracking-[-0.04em] text-[var(--accent-strong)]"
               style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
             >
               Evenly
             </div>
-            <div className="mt-1 text-[15px] font-normal text-[var(--text-muted)]">Your groups</div>
+            <div className="mt-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
+              Home
+            </div>
           </div>
 
-          <IconButton label="Refresh groups" onClick={() => void handleRefresh()} spinning={isRefreshing}>
-            <RefreshIcon />
-          </IconButton>
+          <div className="flex items-center gap-2">
+            <IconButton label="Refresh home" onClick={() => void handleRefresh()} spinning={isRefreshing}>
+              <RefreshIcon />
+            </IconButton>
+            <button
+              type="button"
+              onClick={handleOpenSettings}
+              aria-label="Open settings"
+              className="rounded-full transition active:scale-[0.98]"
+            >
+              <AvatarIcon label={profileName || getDisplayNameFromUser(user, "") || "E"} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[420px] px-5 pt-[108px] pb-28">
-        {user && displayGroups.length > 0 ? (
-          <div className="mb-5 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
-            >
-              <PlusIcon />
-              <span>Create group</span>
-            </button>
+      <div className="mx-auto w-full max-w-[420px] px-5 pt-5 pb-28">
+        {user ? (
+          <>
+            <section className="rounded-[30px] border border-[var(--border)] bg-[linear-gradient(180deg,var(--surface)_0%,var(--surface-soft)_100%)] px-5 py-6 shadow-[var(--shadow-soft)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                    Hi {profileName || getDisplayNameFromUser(user, "") || "there"}
+                  </div>
+                  <div className="mt-2 text-[24px] font-bold tracking-[-0.04em] text-[var(--text)]">
+                    {homeSubtitle}
+                  </div>
+                </div>
+                {homeMetrics.actionGroup ? (
+                  <div className="rounded-full bg-[#EAF2EC] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#3A4E43]">
+                    Action needed
+                  </div>
+                ) : null}
+              </div>
 
-            <button
-              type="button"
-              onClick={() => setIsJoinOpen(true)}
-              className="inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
-            >
-              Join by code
-            </button>
-          </div>
+              <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                Net balance
+              </div>
+              <div
+                className={`mt-2 text-[46px] font-bold leading-none tracking-[-0.06em] ${
+                  homeMetrics.netBalance > 0
+                    ? "text-[var(--success)]"
+                    : homeMetrics.netBalance < 0
+                      ? "text-[var(--danger)]"
+                      : "text-[var(--text)]"
+                }`}
+              >
+                {formatSignedCurrency(homeMetrics.netBalance)}
+              </div>
+              <div className="mt-2 text-[13px] text-[var(--text-soft)]">
+                across {homeMetrics.activeGroupCount} {homeMetrics.activeGroupCount === 1 ? "group" : "groups"}
+              </div>
+            </section>
+
+            {homeMetrics.activeGroupCount ? (
+              <section className="mt-4 grid grid-cols-3 gap-3">
+                <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)]">
+                  <div className="text-[18px] font-semibold tracking-[-0.04em] text-[var(--text)]">
+                    ${Math.round(homeMetrics.monthSpent)}
+                  </div>
+                  <div className="mt-1 text-[12px] font-medium text-[var(--text-muted)]">spent this month</div>
+                </div>
+                <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)]">
+                  <div className="text-[18px] font-semibold tracking-[-0.04em] text-[var(--text)]">
+                    {homeMetrics.activeGroupCount}
+                  </div>
+                  <div className="mt-1 text-[12px] font-medium text-[var(--text-muted)]">active groups</div>
+                </div>
+                <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow-soft)]">
+                  <div className="text-[18px] font-semibold tracking-[-0.04em] text-[var(--text)]">
+                    {homeMetrics.monthExpenseCount}
+                  </div>
+                  <div className="mt-1 text-[12px] font-medium text-[var(--text-muted)]">expenses this month</div>
+                </div>
+              </section>
+            ) : null}
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMode("group");
+                  setIsCreateOpen(true);
+                }}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
+              >
+                <PlusIcon />
+                Create group
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMode("trip");
+                  setIsCreateOpen(true);
+                }}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+              >
+                <PlusIcon />
+                Create trip
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsJoinOpen(true)}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+              >
+                Join by code
+              </button>
+            </div>
+
+            {homeMetrics.actionGroup ? (
+              <section className="mt-5">
+                <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  Action needed
+                </div>
+                <div className="mt-3 rounded-[24px] border border-[rgba(0,112,243,0.18)] bg-[var(--surface)] px-5 py-5 shadow-[var(--shadow-soft)]">
+                  <div className="text-[15px] font-semibold text-[var(--text)]">{homeMetrics.actionGroup.name}</div>
+                  <div className="mt-3 text-[14px] text-[var(--text-muted)]">
+                    {homeMetrics.actionGroup.balance < 0 ? "You owe this group" : "You’re owed in this group"}
+                  </div>
+                  <div className="mt-1 text-[30px] font-bold tracking-[-0.05em] text-[var(--text)]">
+                    {formatSignedCurrency(homeMetrics.actionGroup.balance)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenGroup(homeMetrics.actionGroup)}
+                    className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-[#0070F3] px-5 text-[15px] font-semibold text-white transition hover:opacity-90 active:scale-[0.98]"
+                  >
+                    Settle now
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
+            {turnRotations.length ? (
+              <section className="mt-5">
+                <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  Whose turn?
+                </div>
+                <div className="mt-1 text-[18px] font-semibold tracking-[-0.03em] text-[var(--text)]">
+                  Shared jobs that need attention
+                </div>
+                <div className="mt-3 space-y-3">
+                  {turnRotations.slice(0, 2).map((rotation) => (
+                    <RotationCard
+                      key={rotation.id}
+                      rotation={rotation}
+                      highlight
+                      onMarkComplete={handleOpenRotationComplete}
+                      showGroupName
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </>
         ) : null}
 
         {!supabase ? (
-          <section className="pt-10">
+          <section className="pt-8">
             <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
               <h2 className="text-[24px] font-bold text-[var(--text)]">Connect Supabase first</h2>
               <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
@@ -742,7 +1001,7 @@ export default function GroupsPage() {
             </div>
           </section>
         ) : !user ? (
-          <section className="pt-10">
+          <section className="pt-8">
             <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
               <h2 className="text-[24px] font-bold text-[var(--text)]">Sign in to see your groups</h2>
               <p className="mt-3 text-[15px] leading-6 text-[var(--text-muted)]">
@@ -759,30 +1018,55 @@ export default function GroupsPage() {
           </section>
         ) : displayGroups.length === 0 ? (
           <section className="pt-8">
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
-            >
-              <div className="aspect-[3.375/2.125] w-full rounded-[24px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-6 py-6">
-                <div className="flex h-full flex-col items-center justify-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent-strong)]">
-                    <PlusIcon />
-                  </div>
-                  <h2 className="mt-5 text-[22px] font-semibold text-[var(--text)]">
-                    Create your first group
-                  </h2>
-                  <p className="mt-2 max-w-[230px] text-[14px] leading-5 text-[var(--text-muted)]">
-                    Start with roommates, a trip, or your weekend crew.
+            <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              Your groups
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMode("trip");
+                  setIsCreateOpen(true);
+                }}
+                className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
+              >
+                <div className="w-full rounded-[24px] bg-[var(--surface-soft)] px-6 py-6">
+                  <div className="text-[22px] font-semibold text-[var(--text)]">Create your first trip</div>
+                  <p className="mt-2 text-[14px] leading-5 text-[var(--text-muted)]">
+                    Competitions, vacations, and short-run spending in one shared card.
                   </p>
                 </div>
-              </div>
-            </button>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMode("group");
+                  setIsCreateOpen(true);
+                }}
+                className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
+              >
+                <div className="w-full rounded-[24px] border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-6 py-6">
+                  <div className="flex h-full flex-col items-center justify-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent-strong)]">
+                      <PlusIcon />
+                    </div>
+                    <h2 className="mt-5 text-[22px] font-semibold text-[var(--text)]">
+                      Create your first group
+                    </h2>
+                    <p className="mt-2 max-w-[230px] text-[14px] leading-5 text-[var(--text-muted)]">
+                      Start with roommates, housemates, or the people you split every month with.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
 
             <div className="mt-6 text-center">
               <button
-              type="button"
-              onClick={() => setIsJoinOpen(true)}
+                type="button"
+                onClick={() => setIsJoinOpen(true)}
                 className="text-[15px] font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
               >
                 Join with a code instead
@@ -790,7 +1074,10 @@ export default function GroupsPage() {
             </div>
           </section>
         ) : (
-          <section className="pt-4">
+          <section className="pt-8">
+            <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              Your groups
+            </div>
             <div className="mx-auto w-[88%] max-w-[360px]">
               <div className="relative" style={{ height: `${stackHeight}px` }}>
                 {displayGroups.map((group, index) => (
@@ -817,9 +1104,6 @@ export default function GroupsPage() {
             </div>
 
             <div className="mt-6 text-center">
-              <div className="text-[14px] text-[var(--text-muted)]">
-                Hi {profileName || getDisplayNameFromUser(user, "")}.
-              </div>
               <div className="mt-2 text-[13px] text-[var(--text-soft)]">
                 Tap a card to open it. Press and hold to peek. Tap <span className="font-semibold text-[var(--text-muted)]">Color</span> to change the top card.
               </div>
@@ -840,19 +1124,12 @@ export default function GroupsPage() {
         </div>
       ) : null}
 
-      {isSettingsOpen ? (
-        <SettingsMenu
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          onLogout={() => void handleLogout()}
-        />
-      ) : null}
-
       {isCreateOpen ? (
         <CreateGroupModal
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
           onCreate={handleCreateGroup}
+          mode={createMode}
         />
       ) : null}
 
@@ -872,6 +1149,21 @@ export default function GroupsPage() {
         onColorChange={handleCardColorChange}
         onImageChange={handleCardImageChange}
       />
+
+      {rotationToComplete ? (
+        <CompleteRotationModal
+          key={`home-rotation-${rotationToComplete.id}`}
+          isOpen={Boolean(rotationToComplete)}
+          rotation={rotationToComplete}
+          recentExpenses={recentRotationExpenses}
+          onClose={() => {
+            setRotationToComplete(null);
+            setRecentRotationExpenses([]);
+          }}
+          onConfirm={handleCompleteRotation}
+          isSubmitting={isCompletingRotation}
+        />
+      ) : null}
     </motion.main>
   );
 }

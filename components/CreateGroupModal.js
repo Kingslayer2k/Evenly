@@ -28,9 +28,11 @@ function ImagePlusIcon() {
   );
 }
 
-export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
+export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "group" }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [groupName, setGroupName] = useState("");
+  const [tripStartDate, setTripStartDate] = useState("");
+  const [tripEndDate, setTripEndDate] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [selectedColor, setSelectedColor] = useState(getDefaultColor(0));
   const [selectedImage, setSelectedImage] = useState("");
@@ -44,6 +46,8 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
   function resetState() {
     setCurrentStep(1);
     setGroupName("");
+    setTripStartDate("");
+    setTripEndDate("");
     setGeneratedCode("");
     setSelectedColor(getDefaultColor(0));
     setSelectedImage("");
@@ -94,6 +98,9 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
 
     const result = await onCreate?.({
       name: trimmedName,
+      mode,
+      tripStartDate: tripStartDate || null,
+      tripEndDate: tripEndDate || null,
       color: selectedColor,
       imageData: selectedImage,
     });
@@ -192,24 +199,57 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
         {currentStep === 1 ? (
           <div className="flex h-[calc(85vh-56px)] flex-col">
             <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
-              <h2 className="text-[28px] font-bold text-[var(--text)]">New group</h2>
+              <h2 className="text-[28px] font-bold text-[var(--text)]">
+                {mode === "trip" ? "New trip" : "New group"}
+              </h2>
               <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">
-                Roomies, trip crew, weekend away.
+                {mode === "trip"
+                  ? "Competitions, vacations, and short shared spending in one place."
+                  : "Roomies, housemates, and the people you split everyday life with."}
               </p>
 
               <label className="mt-8 block text-[13px] font-medium text-[var(--text-muted)]">
-                Group name
+                {mode === "trip" ? "Trip name" : "Group name"}
               </label>
               <input
                 type="text"
                 value={groupName}
                 onChange={(event) => setGroupName(event.target.value)}
-                placeholder="e.g., The Apartment"
+                placeholder={mode === "trip" ? "e.g., ICDC Atlanta 2026" : "e.g., The Apartment"}
                 className="mt-2 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] font-normal text-[var(--text)] placeholder:text-[var(--text-soft)] outline-none focus:border-[var(--accent)]"
               />
 
+              {mode === "trip" ? (
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[13px] font-medium text-[var(--text-muted)]">
+                      Start date
+                    </label>
+                    <input
+                      type="date"
+                      value={tripStartDate}
+                      onChange={(event) => setTripStartDate(event.target.value)}
+                      className="mt-2 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] font-normal text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[13px] font-medium text-[var(--text-muted)]">
+                      End date
+                    </label>
+                    <input
+                      type="date"
+                      value={tripEndDate}
+                      onChange={(event) => setTripEndDate(event.target.value)}
+                      className="mt-2 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] font-normal text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-6">
-                <div className="text-[13px] font-medium text-[var(--text-muted)]">Card color</div>
+                <div className="text-[13px] font-medium text-[var(--text-muted)]">
+                  {mode === "trip" ? "Trip color" : "Card color"}
+                </div>
 
                 <div className="mt-3 flex flex-wrap gap-3">
                   {PRESET_COLORS.map((color) => {
@@ -287,9 +327,13 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
                             className="text-[26px] font-semibold leading-[0.96] tracking-[-0.04em]"
                             style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
                           >
-                            {groupName.trim() || "Your group"}
+                            {groupName.trim() || (mode === "trip" ? "Your trip" : "Your group")}
                           </div>
-                          <div className="mt-2 text-[14px] text-white/85">You and the crew</div>
+                          <div className="mt-2 text-[14px] text-white/85">
+                            {mode === "trip"
+                              ? [tripStartDate, tripEndDate].filter(Boolean).join(" → ") || "Dates coming soon"
+                              : "You and the crew"}
+                          </div>
                         </div>
                         <div className="text-right text-[16px] font-semibold">$0</div>
                       </div>
@@ -332,7 +376,9 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate }) {
           <div className="h-[calc(85vh-56px)] overflow-y-auto px-6 pt-6 pb-8">
             <div className="text-center">
               <div className="text-[48px] leading-none">✓</div>
-              <h2 className="mt-4 text-[28px] font-bold text-[var(--text)]">Group created!</h2>
+              <h2 className="mt-4 text-[28px] font-bold text-[var(--text)]">
+                {mode === "trip" ? "Trip created!" : "Group created!"}
+              </h2>
               <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">
                 Share this code with your friends
               </p>
