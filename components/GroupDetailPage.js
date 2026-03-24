@@ -42,6 +42,7 @@ import {
 
 const AddExpenseModal = dynamic(() => import("./AddExpenseModal"), { loading: () => null });
 const TripSummaryModal = dynamic(() => import("./TripSummaryModal"), { loading: () => null });
+const TripStoryModal = dynamic(() => import("./TripStoryModal"), { loading: () => null });
 const QRInviteModal = dynamic(() => import("./QRInviteModal"), { loading: () => null });
 const CompleteRotationModal = dynamic(() => import("./CompleteRotationModal"), { loading: () => null });
 const CreateRotationModal = dynamic(() => import("./CreateRotationModal"), { loading: () => null });
@@ -207,6 +208,7 @@ export default function GroupDetailPage({ groupId }) {
   const [paymentFlow, setPaymentFlow] = useState(null);
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [isQROpen, setIsQROpen] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [viewportHeight, setViewportHeight] = useState(720);
@@ -1324,16 +1326,24 @@ export default function GroupDetailPage({ groupId }) {
 
                 {isTrip ? (
                   <section className="rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
-                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Export</h2>
+                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Trip recap</h2>
                     <p className="mt-3 text-[14px] leading-6 text-[var(--text-muted)]">
-                      Generate a full breakdown of {group.name} — total spent, per-person shares, and settlement recommendations.
+                      Relive the trip or export a full breakdown with per-person shares and settlements.
                     </p>
                     <button
                       type="button"
-                      onClick={() => setIsSummaryOpen(true)}
-                      className="mt-4 flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--accent)] px-5 text-[15px] font-semibold text-white transition hover:opacity-90"
+                      onClick={() => setIsStoryOpen(true)}
+                      className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-5 text-[15px] font-semibold text-white transition hover:opacity-90"
                     >
-                      View trip summary
+                      <span className="text-[18px] leading-none">&#x25B6;&#xFE0E;</span>
+                      View trip story
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSummaryOpen(true)}
+                      className="mt-3 flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-5 text-[15px] font-semibold text-[var(--text)] transition hover:opacity-90"
+                    >
+                      Export summary
                     </button>
                   </section>
                 ) : null}
@@ -1402,6 +1412,17 @@ export default function GroupDetailPage({ groupId }) {
           expenses={expenses}
           summary={summary}
           onClose={() => setIsSummaryOpen(false)}
+        />
+      ) : null}
+
+      {isStoryOpen ? (
+        <TripStoryModal
+          isOpen={isStoryOpen}
+          group={group}
+          members={members}
+          expenses={expenses}
+          summary={summary}
+          onClose={() => setIsStoryOpen(false)}
         />
       ) : null}
 
