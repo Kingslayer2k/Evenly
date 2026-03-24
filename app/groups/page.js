@@ -923,16 +923,18 @@ export default function GroupsPage() {
               </section>
             ) : null}
 
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setCreateMode("group");
                   setIsCreateOpen(true);
                 }}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full bg-[var(--accent)] px-2 text-center text-[12px] font-semibold whitespace-nowrap text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98] min-[390px]:px-3 min-[390px]:text-[13px]"
               >
-                <PlusIcon />
+                <span className="hidden min-[390px]:inline-flex">
+                  <PlusIcon />
+                </span>
                 Create group
               </button>
               <button
@@ -941,15 +943,17 @@ export default function GroupsPage() {
                   setCreateMode("trip");
                   setIsCreateOpen(true);
                 }}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 text-center text-[12px] font-semibold whitespace-nowrap text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98] min-[390px]:px-3 min-[390px]:text-[13px]"
               >
-                <PlusIcon />
+                <span className="hidden min-[390px]:inline-flex">
+                  <PlusIcon />
+                </span>
                 Create trip
               </button>
               <button
                 type="button"
                 onClick={() => setIsJoinOpen(true)}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 text-center text-[12px] font-semibold whitespace-nowrap text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98] min-[390px]:px-3 min-[390px]:text-[13px]"
               >
                 Join by code
               </button>
@@ -960,18 +964,18 @@ export default function GroupsPage() {
                 <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
                   Action needed
                 </div>
-                <div className="mt-3 rounded-[24px] border border-[rgba(0,112,243,0.18)] bg-[var(--surface)] px-5 py-5 shadow-[var(--shadow-soft)]">
+                <div className="mt-3 rounded-[24px] border border-[rgba(0,112,243,0.18)] bg-[var(--surface)] px-4 py-4 text-center shadow-[var(--shadow-soft)]">
                   <div className="text-[15px] font-semibold text-[var(--text)]">{homeMetrics.actionGroup.name}</div>
-                  <div className="mt-3 text-[14px] text-[var(--text-muted)]">
+                  <div className="mt-2 text-[13px] text-[var(--text-muted)]">
                     {homeMetrics.actionGroup.balance < 0 ? "You owe this group" : "You’re owed in this group"}
                   </div>
-                  <div className="mt-1 text-[30px] font-bold tracking-[-0.05em] text-[var(--text)]">
+                  <div className="mt-1 text-[26px] font-bold tracking-[-0.05em] text-[var(--text)]">
                     {formatSignedCurrency(homeMetrics.actionGroup.balance)}
                   </div>
                   <button
                     type="button"
                     onClick={() => handleOpenGroup(homeMetrics.actionGroup)}
-                    className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-[#0070F3] px-5 text-[15px] font-semibold text-white transition hover:opacity-90 active:scale-[0.98]"
+                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#0070F3] px-4 text-center text-[13px] font-semibold whitespace-nowrap text-white transition hover:opacity-90 active:scale-[0.98]"
                   >
                     Settle now
                   </button>
@@ -1053,7 +1057,9 @@ export default function GroupsPage() {
                 className="mx-auto flex w-[88%] max-w-[360px] items-center justify-center rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] active:scale-[0.99]"
               >
                 <div className="w-full rounded-[24px] bg-[var(--surface-soft)] px-6 py-6">
-                  <div className="text-[22px] font-semibold text-[var(--text)]">Create your first trip</div>
+                  <div className="text-[18px] font-semibold whitespace-nowrap text-[var(--text)] min-[390px]:text-[20px]">
+                    Create your first trip
+                  </div>
                   <p className="mt-2 text-[14px] leading-5 text-[var(--text-muted)]">
                     Competitions, vacations, and short-run spending in one shared card.
                   </p>
@@ -1073,7 +1079,7 @@ export default function GroupsPage() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent-strong)]">
                       <PlusIcon />
                     </div>
-                    <h2 className="mt-5 text-[22px] font-semibold text-[var(--text)]">
+                    <h2 className="mt-5 text-[18px] font-semibold whitespace-nowrap text-[var(--text)] min-[390px]:text-[20px]">
                       Create your first group
                     </h2>
                     <p className="mt-2 max-w-[230px] text-[14px] leading-5 text-[var(--text-muted)]">

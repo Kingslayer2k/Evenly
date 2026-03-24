@@ -51,7 +51,7 @@ function FilterPill({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-11 rounded-full px-4 text-[14px] font-semibold transition ${
+      className={`min-h-11 w-full rounded-full px-2 text-center text-[11px] font-semibold whitespace-nowrap transition min-[390px]:text-[12px] ${
         active
           ? "bg-[var(--accent)] text-white"
           : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]"
@@ -137,7 +137,7 @@ export default function ActivityPage() {
             A shared timeline across trips, homes, and every balance shift.
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 grid grid-cols-4 gap-2">
             {FILTERS.map((filter) => (
               <FilterPill
                 key={filter.id}

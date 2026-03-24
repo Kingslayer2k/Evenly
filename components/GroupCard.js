@@ -137,9 +137,9 @@ function GroupCard({
         <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-[#0070F3] shadow-[0_0_0_4px_rgba(255,255,255,0.18)]" />
       ) : null}
 
-      <div className={`relative z-20 aspect-[3.375/2.28] w-full ${collapsed ? "px-5 pt-3 pb-6" : "px-6 pt-5 pb-9"} pointer-events-none`}>
+      <div className={`relative z-20 aspect-[3.375/2.48] w-full ${collapsed ? "px-5 pt-4 pb-7" : "px-6 pt-5 pb-10"} pointer-events-none`}>
         {collapsed ? (
-          <div className="flex h-[56px] items-start justify-between gap-3">
+          <div className="flex h-[64px] items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h3
                 className="min-w-0 truncate text-[18px] font-semibold leading-none tracking-[-0.04em] text-white"
@@ -147,7 +147,7 @@ function GroupCard({
               >
                 {group.name}
               </h3>
-              <div className="mt-1 truncate text-[11px] font-medium leading-none text-white/82">
+              <div className="mt-1 truncate text-[10px] font-medium leading-none text-white/82">
                 {group.mode === "trip"
                   ? group.tripDateLabel || "Trip spending"
                   : group.memberPreview || "Just you for now"}
@@ -165,12 +165,12 @@ function GroupCard({
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <h3
-                  className="max-w-[190px] text-[31px] font-semibold leading-[0.94] tracking-[-0.04em] text-white"
+                  className="max-w-[210px] text-[31px] font-semibold leading-[0.94] tracking-[-0.04em] text-white"
                   style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
                 >
                   {group.name}
                 </h3>
-                <p className="mt-3 max-w-[220px] truncate text-[14px] font-normal text-white/85">
+                <p className="mt-3 max-w-[230px] truncate text-[13px] font-normal text-white/85">
                   {group.mode === "trip"
                     ? group.tripDateLabel || "Short-run shared spending"
                     : group.memberPreview || "Just you for now"}
@@ -190,10 +190,10 @@ function GroupCard({
             <div className="mt-auto">
               <div className="flex items-end justify-between gap-4">
                 <div className="min-w-0">
-                <div className="text-[13px] font-semibold uppercase tracking-[0.12em] text-white/72">
+                <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/72">
                   {standingCopy}
                 </div>
-                <div className="mt-2 text-[38px] font-bold leading-none tracking-[-0.06em] text-white">
+                <div className="mt-2 text-[34px] font-bold leading-none tracking-[-0.06em] text-white">
                   {formatBalance(group.balance)}
                   </div>
                 </div>
@@ -206,7 +206,7 @@ function GroupCard({
                           type="button"
                           onPointerDown={stopCardOpen}
                           onClick={handleColorButtonClick}
-                          className="inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/35 bg-white/14 px-2.5 text-[11px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
                           aria-label={`Change ${group.name} card color`}
                         >
                           <FourSquaresIcon />
@@ -219,7 +219,7 @@ function GroupCard({
                             event.stopPropagation();
                             imageInputRef.current?.click();
                           }}
-                          className="inline-flex h-9 items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 text-[12px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/35 bg-white/14 px-2.5 text-[11px] font-semibold tracking-[0.02em] text-white/92 transition hover:border-[#5F7D6A] hover:bg-[#5F7D6A] hover:text-white active:scale-[0.96]"
                           aria-label={`Add an image to ${group.name}`}
                         >
                           <ImagePlusIcon />
@@ -247,7 +247,7 @@ function GroupCard({
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-4 text-[12px] font-medium leading-[1.2] text-white/82">
+              <div className="mt-4 flex items-center justify-between gap-4 text-[11px] font-medium leading-[1.2] text-white/82">
                 <div className="truncate">
                   {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"} • {group.mode === "trip" ? "trip" : "group"}
                 </div>

@@ -331,7 +331,7 @@ export default function GroupDetailPage({ groupId }) {
         window.clearTimeout(toastTimeoutRef.current);
       }
     };
-  }, [loadDetail]);
+  }, [groupId, loadDetail]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -350,7 +350,10 @@ export default function GroupDetailPage({ groupId }) {
     router.prefetch("/activity");
     router.prefetch("/people");
     router.prefetch("/settings");
-  }, [router]);
+    if (groupId) {
+      router.prefetch(`/groups/${groupId}`);
+    }
+  }, [groupId, router]);
 
   useEffect(() => {
     if (!supabase || !user || !groupId) return undefined;
