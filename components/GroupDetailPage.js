@@ -27,7 +27,6 @@ import {
   formatCurrency,
   formatExpenseDate,
   formatSignedCurrency,
-  getDisplayNameFromUser,
   getExpenseEmoji,
   getExpenseTitle,
   getMemberPreview,
@@ -55,6 +54,17 @@ function readStoredCardColor(groupId) {
     console.error("Could not read stored card color:", error);
     return null;
   }
+}
+
+function formatTripDateRange(startDate, endDate) {
+  if (!startDate && !endDate) return "";
+  const opts = { month: "short", day: "numeric" };
+  const start = startDate ? new Date(startDate).toLocaleDateString("en-US", opts) : null;
+  const end = endDate ? new Date(endDate).toLocaleDateString("en-US", opts) : null;
+  if (start && end) return `${start} \u2013 ${end}`;
+  if (start) return `From ${start}`;
+  if (end) return `Until ${end}`;
+  return "";
 }
 
 function BackIcon() {
@@ -158,7 +168,6 @@ export default function GroupDetailPage({ groupId }) {
   const toastTimeoutRef = useRef(null);
   const refreshTimerRef = useRef(null);
   const [user, setUser] = useState(null);
-  const [profileName, setProfileName] = useState("");
   const [group, setGroup] = useState(null);
   const [membership, setMembership] = useState(null);
   const [members, setMembers] = useState([]);
@@ -220,7 +229,6 @@ export default function GroupDetailPage({ groupId }) {
           loadGroupDetailBundle(supabase, groupId, currentUser),
           loadUserContacts(supabase, currentUser),
         ]);
-        setProfileName(bundle.profileName);
         setGroup(bundle.group);
         setMembership(bundle.membership);
         setMembers(bundle.members);
@@ -379,8 +387,7 @@ export default function GroupDetailPage({ groupId }) {
   const memberPreview = useMemo(() => getMemberPreview(members), [members]);
   const inviteCode = group?.join_code || group?.code || "------";
   const shareLink = typeof window !== "undefined" ? `${window.location.origin}/groups?join=${inviteCode}` : "";
-  const displayName = profileName || getDisplayNameFromUser(user, "");
-  const shouldVirtualizeExpenses = expenses.length > 50;
+const shouldVirtualizeExpenses = expenses.length > 50;
   const expenseListHeight = useMemo(
     () => Math.min(Math.max(viewportHeight - 360, 360), expenses.length * 110),
     [expenses.length, viewportHeight],
@@ -407,6 +414,12 @@ export default function GroupDetailPage({ groupId }) {
       };
     });
   }, [members, rotationHistory, rotations]);
+
+  const isTrip = group?.group_type === "trip" || group?.type === "trip";
+  const tripDateRange = formatTripDateRange(
+    group?.start_date || group?.starts_at,
+    group?.end_date || group?.ends_at,
+  );
 
   const getCounterpartyForSettlement = useCallback(
     (item, direction) => {
@@ -758,7 +771,11 @@ export default function GroupDetailPage({ groupId }) {
               {group?.name || "Group"}
             </div>
             <div className="mt-1 text-[14px] text-[var(--text-muted)]">
-              {isRefreshing ? "Refreshing..." : "Live group detail"}
+              {isRefreshing
+                ? "Refreshing\u2026"
+                : isTrip && tripDateRange
+                  ? tripDateRange
+                  : `${members.length} member${members.length === 1 ? "" : "s"}`}
             </div>
           </div>
 
@@ -826,22 +843,30 @@ export default function GroupDetailPage({ groupId }) {
               <div className="relative bg-[rgba(28,25,23,0.18)] px-6 pt-6 pb-6 text-white">
                 <div className="flex items-start justify-between gap-4">
                   <div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white/90">
+                        {isTrip ? "Trip" : "Home"}
+                      </span>
+                      {tripDateRange ? (
+                        <span className="text-[13px] text-white/70">{tripDateRange}</span>
+                      ) : null}
+                    </div>
                     <h1
-                      className="max-w-[230px] text-[34px] font-semibold leading-[0.95] tracking-[-0.05em]"
+                      className="mt-2 max-w-[230px] text-[34px] font-semibold leading-[0.95] tracking-[-0.05em]"
                       style={{ fontFamily: "Tiempos Headline, Georgia, 'Times New Roman', serif" }}
                     >
                       {group.name}
                     </h1>
-                    <p className="mt-3 max-w-[240px] text-[14px] text-white/85">
+                    <p className="mt-3 max-w-[240px] text-[13px] text-white/75">
                       {memberPreview || "Just you for now"}
                     </p>
                   </div>
 
                   <div className="text-right">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">
                       Invite code
                     </div>
-                    <div className="mt-1 font-mono text-[18px] font-bold tracking-[0.18em]">
+                    <div className="mt-1 font-mono text-[16px] font-bold tracking-[0.18em]">
                       {inviteCode}
                     </div>
                   </div>
@@ -921,16 +946,16 @@ export default function GroupDetailPage({ groupId }) {
               </div>
               <div className="rounded-[24px] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
                 <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-                  You
+                  Rotations
                 </div>
-                <div className="mt-2 truncate text-[18px] font-bold tracking-[-0.03em] text-[var(--text)]">
-                  {displayName}
+                <div className="mt-2 text-[26px] font-bold tracking-[-0.04em] text-[var(--text)]">
+                  {rotations.length}
                 </div>
               </div>
             </section>
 
             <div className="mt-6 inline-flex rounded-full bg-[var(--surface-muted)] p-1">
-              {["expenses", "rotations"].map((tab) => {
+              {["expenses", "members", "rotations"].map((tab) => {
                 const active = detailTab === tab;
                 return (
                   <button
@@ -1007,6 +1032,57 @@ export default function GroupDetailPage({ groupId }) {
                   </div>
                 </section>
               </>
+            ) : null}
+
+            {detailTab === "members" ? (
+              <section className="mt-6 rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
+                <h2 className="text-[22px] font-bold tracking-[-0.04em] text-[var(--text)]">Member balances</h2>
+                <p className="mt-1 text-[14px] text-[var(--text-muted)]">
+                  Who&apos;s up, who&apos;s down — after all recorded settlements.
+                </p>
+                <div className="mt-4 space-y-2.5">
+                  {members.map((member) => {
+                    const balanceCents = summary.balancesByMember[member.id] ?? 0;
+                    const isYou = member.id === membership?.id;
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between gap-4 rounded-[20px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3.5"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[14px] font-bold text-[var(--text)]">
+                            {(member.display_name || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-[15px] font-semibold text-[var(--text)]">
+                              {member.display_name || "Unknown"}{isYou ? " (you)" : ""}
+                            </div>
+                            {member.role === "admin" ? (
+                              <div className="text-[12px] text-[var(--text-muted)]">Admin</div>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div
+                          className={`shrink-0 text-[15px] font-bold tabular-nums ${
+                            balanceCents > 0
+                              ? "text-[#3D7A5C]"
+                              : balanceCents < 0
+                                ? "text-[var(--danger)]"
+                                : "text-[var(--text-muted)]"
+                          }`}
+                        >
+                          {balanceCents === 0 ? "Settled" : formatSignedCurrency(balanceCents / 100)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!members.length ? (
+                    <div className="rounded-2xl bg-[var(--surface-muted)] px-4 py-4 text-[14px] text-[var(--text-muted)]">
+                      No members yet.
+                    </div>
+                  ) : null}
+                </div>
+              </section>
             ) : null}
 
             {detailTab === "rotations" ? (
