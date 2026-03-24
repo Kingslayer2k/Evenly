@@ -981,36 +981,36 @@ export default function GroupDetailPage({ groupId }) {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="mt-5 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setIsQROpen(true)}
-                    className="flex min-h-11 items-center justify-center rounded-full bg-white px-4 py-2 text-center text-[14px] font-semibold text-[#1C1917] transition hover:bg-[#F3F4F6]"
+                    className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 text-[13px] font-semibold text-[#1C1917] whitespace-nowrap transition hover:bg-[#F3F4F6]"
                   >
                     QR code
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleShareInvite()}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/45 px-4 py-2 text-center text-[14px] font-semibold text-white transition hover:border-white hover:bg-white/10"
+                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-white/45 px-4 text-[13px] font-semibold text-white whitespace-nowrap transition hover:bg-white/10"
                   >
                     <ShareIcon />
-                    Share invite
+                    Share
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsLeaveGroupOpen(true)}
-                    className="flex min-h-11 items-center justify-center rounded-full border border-white/45 px-4 py-2 text-center text-[14px] font-semibold text-white transition hover:bg-white/10"
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/45 px-4 text-[13px] font-semibold text-white whitespace-nowrap transition hover:bg-white/10"
                   >
-                    Leave group
+                    Leave
                   </button>
                   {membership?.role === "admin" ? (
                     <button
                       type="button"
                       onClick={() => setIsDeleteGroupOpen(true)}
-                      className="flex min-h-11 items-center justify-center rounded-full border border-white/45 px-4 py-2 text-center text-[14px] font-semibold text-white transition hover:bg-white/10"
+                      className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/45 px-4 text-[13px] font-semibold text-white whitespace-nowrap transition hover:bg-white/10"
                     >
-                      Delete group
+                      Delete
                     </button>
                   ) : null}
                 </div>
@@ -1044,7 +1044,7 @@ export default function GroupDetailPage({ groupId }) {
               </div>
             </section>
 
-            <div className="mt-6 inline-flex rounded-full bg-[var(--surface-muted)] p-1">
+            <div className="mt-6 flex w-full rounded-full bg-[var(--surface-muted)] p-1">
               {["expenses", "members", "rotations", "settings"].map((tab) => {
                 const active = detailTab === tab;
                 return (
@@ -1052,7 +1052,7 @@ export default function GroupDetailPage({ groupId }) {
                     key={tab}
                     type="button"
                     onClick={() => setDetailTab(tab)}
-                    className={`min-h-11 rounded-full px-4 text-[14px] font-semibold capitalize transition ${
+                    className={`flex-1 min-h-11 rounded-full px-2 text-[13px] font-semibold capitalize transition whitespace-nowrap ${
                       active
                         ? "bg-[var(--surface)] text-[var(--text)] shadow-[0_2px_6px_rgba(28,25,23,0.08)]"
                         : "text-[var(--text-muted)]"

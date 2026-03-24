@@ -536,27 +536,27 @@ export default function GroupsPage() {
       <div className="mx-auto w-full max-w-[460px] px-5 pt-5 pb-28">
         {/* Action buttons */}
         {user && (
-          <div className="mb-6 flex flex-wrap gap-2">
+          <div className="mb-6 flex gap-2">
             <button
               type="button"
               onClick={() => { setCreateMode("group"); setIsCreateOpen(true); }}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 text-[15px] font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] px-3 text-[14px] font-semibold text-white whitespace-nowrap transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
             >
               <PlusIcon />
-              New group
+              Group
             </button>
             <button
               type="button"
               onClick={() => { setCreateMode("trip"); setIsCreateOpen(true); }}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] whitespace-nowrap transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
             >
               <PlusIcon />
-              New trip
+              Trip
             </button>
             <button
               type="button"
               onClick={() => setIsJoinOpen(true)}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-[14px] font-semibold text-[var(--text)] whitespace-nowrap transition hover:bg-[var(--surface-soft)] active:scale-[0.98]"
             >
               Join
             </button>
