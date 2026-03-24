@@ -10,7 +10,10 @@ import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
 import {
   completeRotationRecord,
+  createExpenseTemplate,
   createRotationRecord,
+  deleteExpenseTemplate,
+  loadExpenseTemplates,
   loadUserContacts,
   createSettlementRecord,
   createExpenseRecord,
@@ -205,6 +208,7 @@ export default function GroupDetailPage({ groupId }) {
   const [isSavingSettlement, setIsSavingSettlement] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isQROpen, setIsQROpen] = useState(false);
+  const [templates, setTemplates] = useState([]);
   const [viewportHeight, setViewportHeight] = useState(720);
 
   const showToast = useCallback((message) => {
@@ -298,6 +302,7 @@ export default function GroupDetailPage({ groupId }) {
 
       if (nextUser) {
         await loadDetail(nextUser);
+        loadExpenseTemplates(supabase, groupId).then(setTemplates).catch(() => {});
       } else {
         setIsLoading(false);
       }
@@ -468,6 +473,7 @@ export default function GroupDetailPage({ groupId }) {
       contextId,
       contextName,
       splitDetails,
+      recurringInterval,
     }) => {
       if (!supabase || !user) {
         return { ok: false, message: "Sign in first so we can save the expense." };
@@ -490,8 +496,25 @@ export default function GroupDetailPage({ groupId }) {
           splitDetails,
         });
 
+        if (recurringInterval) {
+          await createExpenseTemplate(supabase, {
+            groupId,
+            createdByMemberId: membership?.id || null,
+            title,
+            amountCents,
+            paidBy,
+            participants,
+            splitType,
+            splitMethod,
+            shares,
+            splitDetails,
+            recurringInterval,
+          });
+          loadExpenseTemplates(supabase, groupId).then(setTemplates).catch(() => {});
+        }
+
         await loadDetail(user, { refresh: true });
-        showToast("Expense added");
+        showToast(recurringInterval ? "Recurring expense saved" : "Expense added");
         return { ok: true };
       } catch (error) {
         console.error(error);
@@ -501,7 +524,7 @@ export default function GroupDetailPage({ groupId }) {
         };
       }
     },
-    [groupId, loadDetail, showToast, user],
+    [groupId, loadDetail, membership?.id, showToast, user],
   );
 
   const handleEditExpense = useCallback(
@@ -1060,6 +1083,44 @@ export default function GroupDetailPage({ groupId }) {
                     </button>
                   </div>
 
+                  {!isTrip && templates.length > 0 ? (
+                    <div className="mt-4 mb-1">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                        Recurring
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        {templates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="flex items-center justify-between gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="text-[18px]">{template.title?.match(/^\p{Emoji}/u)?.[0] || "🔁"}</span>
+                              <div className="min-w-0">
+                                <div className="truncate text-[14px] font-semibold text-[var(--text)]">
+                                  {template.title?.replace(/^\p{Emoji}\s*/u, "") || "Recurring expense"}
+                                </div>
+                                <div className="text-[12px] text-[var(--text-muted)]">
+                                  Monthly · {template.amount_cents ? `$${(template.amount_cents / 100).toFixed(2)}` : "variable amount"}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await deleteExpenseTemplate(supabase, template.id);
+                                setTemplates((prev) => prev.filter((t) => t.id !== template.id));
+                              }}
+                              className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--danger)] hover:border-[var(--danger)] transition"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="mt-4">
                     {shouldVirtualizeExpenses ? (
                       <List
@@ -1352,6 +1413,7 @@ export default function GroupDetailPage({ groupId }) {
           contacts={contacts}
           initialPayerId={membership?.id}
           rotations={rotations}
+          groupType={isTrip ? "trip" : "group"}
         />
       ) : null}
 

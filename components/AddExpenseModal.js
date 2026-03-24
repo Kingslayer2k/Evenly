@@ -29,6 +29,7 @@ export default function AddExpenseModal({
   initialPayerId,
   rotations = [],
   initialExpense = null,
+  groupType = "group",
 }) {
   const memberIds = (members || []).map((member) => member.id);
   const contactIds = (contacts || []).map((contact) => contact.id);
@@ -78,6 +79,7 @@ export default function AddExpenseModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isFairSplitOpen, setIsFairSplitOpen] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
   const [error, setError] = useState("");
 
   const amountCents = useMemo(() => toCents(amount), [amount]);
@@ -260,6 +262,7 @@ export default function AddExpenseModal({
       contextId: contextId || null,
       contextName: contextName.trim() || null,
       splitDetails: Object.keys(effectiveSplitDetails).length ? effectiveSplitDetails : null,
+      recurringInterval: isRecurring && !isEditing ? "monthly" : null,
     });
 
     if (!result?.ok) {
@@ -604,6 +607,35 @@ export default function AddExpenseModal({
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-[14px] text-[var(--text-muted)]">
               Matches the <span className="font-semibold text-[var(--text)]">{matchedRotation.name}</span> rotation. We&apos;ll carry that link into the saved expense.
             </div>
+          ) : null}
+
+          {groupType !== "trip" && !isEditing ? (
+            <button
+              type="button"
+              onClick={() => setIsRecurring((prev) => !prev)}
+              className={`flex w-full items-center justify-between rounded-[14px] border px-4 py-3.5 transition ${
+                isRecurring
+                  ? "border-[var(--accent)] bg-[var(--surface-accent)]"
+                  : "border-[var(--border)] bg-[var(--surface-muted)]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-[18px]">🔁</span>
+                <div className="text-left">
+                  <div className="text-[15px] font-semibold text-[var(--text)]">Repeat monthly</div>
+                  <div className="text-[12px] text-[var(--text-muted)]">
+                    {isRecurring ? "Fires on the 1st of each month" : "One-time expense"}
+                  </div>
+                </div>
+              </div>
+              <div
+                className={`relative h-7 w-12 rounded-full transition ${isRecurring ? "bg-[var(--accent)]" : "bg-[var(--border)]"}`}
+              >
+                <span
+                  className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${isRecurring ? "left-5" : "left-0.5"}`}
+                />
+              </div>
+            </button>
           ) : null}
 
           {error ? <p className="text-[14px] font-medium text-[var(--danger)]">{error}</p> : null}
