@@ -40,6 +40,9 @@ const CreateGroupModal = dynamic(() => import("../../components/CreateGroupModal
 const JoinGroupModal = dynamic(() => import("../../components/JoinGroupModal"), {
   loading: () => null,
 });
+const QuickAddExpenseModal = dynamic(() => import("../../components/QuickAddExpenseModal"), {
+  loading: () => null,
+});
 
 function IconButton({ children, onClick, label, spinning = false }) {
   return (
@@ -230,6 +233,7 @@ export default function GroupsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createMode, setCreateMode] = useState("group");
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [previewState, setPreviewState] = useState({ group: null, openedAt: 0 });
 
   const showToast = useCallback((message) => {
@@ -512,6 +516,12 @@ export default function GroupsPage() {
     setPreviewState({ group: null, openedAt: 0 });
   }, []);
 
+  const handleQuickAddSuccess = useCallback(async () => {
+    if (!user) return;
+    await loadGroupsData(user, { refresh: true });
+    showToast("Expense added");
+  }, [loadGroupsData, showToast, user]);
+
   return (
     <motion.main
       className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[var(--bg)]"
@@ -690,12 +700,35 @@ export default function GroupsPage() {
         </div>
       ) : null}
 
+      {user && displayGroups.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setIsQuickAddOpen(true)}
+          className="fixed right-4 bottom-[88px] z-30 inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-[15px] font-semibold text-white shadow-[0_4px_16px_rgba(28,25,23,0.18)] transition hover:bg-[var(--accent-strong)] active:scale-[0.97]"
+        >
+          <PlusIcon />
+          Add expense
+        </button>
+      ) : null}
+
       {isCreateOpen ? (
         <CreateGroupModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onCreate={handleCreateGroup} mode={createMode} />
       ) : null}
 
       {isJoinOpen ? (
         <JoinGroupModal isOpen={isJoinOpen} onClose={handleCloseJoinModal} onJoin={handleJoinGroup} initialCode={prefillJoinCode} />
+      ) : null}
+
+      {isQuickAddOpen ? (
+        <QuickAddExpenseModal
+          isOpen={isQuickAddOpen}
+          onClose={() => setIsQuickAddOpen(false)}
+          groups={displayGroups}
+          membersByGroup={membersByGroup}
+          memberships={memberships}
+          user={user}
+          onSuccess={handleQuickAddSuccess}
+        />
       ) : null}
 
       <GroupPreviewOverlay
