@@ -193,7 +193,7 @@ function GroupCard({
                 <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/72">
                   {standingCopy}
                 </div>
-                <div className="mt-2 text-[34px] font-bold leading-none tracking-[-0.06em] text-white">
+                <div className="mt-2 whitespace-nowrap text-[34px] font-bold leading-none tracking-[-0.06em] text-white">
                   {formatBalance(group.balance)}
                   </div>
                 </div>

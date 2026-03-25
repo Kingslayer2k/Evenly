@@ -272,7 +272,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
           <div className="flex h-[calc(85vh-56px)] flex-col">
             <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
               <h2 className="text-[28px] font-bold text-[var(--text)]">
-                {activeMode === "trip" ? "New trip" : "New group"}
+                {activeMode === "trip" ? "New trip" : "New home"}
               </h2>
               <p className="mt-2 text-[15px] font-normal text-[var(--text-muted)]">
                 {activeMode === "trip"
@@ -293,7 +293,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
 
               {activeMode === "trip" ? (
                 <div className="mt-6 grid grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[13px] font-medium text-[var(--text-muted)]">
                       Start date
                     </label>
@@ -301,10 +301,10 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
                       type="date"
                       value={tripStartDate}
                       onChange={(event) => setTripStartDate(event.target.value)}
-                      className="mt-2 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] font-normal text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      className="mt-2 h-12 w-full min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-normal text-[var(--text)] outline-none focus:border-[var(--accent)]"
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[13px] font-medium text-[var(--text-muted)]">
                       End date
                     </label>
@@ -312,7 +312,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
                       type="date"
                       value={tripEndDate}
                       onChange={(event) => setTripEndDate(event.target.value)}
-                      className="mt-2 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] font-normal text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      className="mt-2 h-12 w-full min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-normal text-[var(--text)] outline-none focus:border-[var(--accent)]"
                     />
                   </div>
                 </div>
@@ -391,7 +391,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
                     />
                   ) : null}
 
-                  <div className="relative aspect-[3.375/2.125] bg-[rgba(28,25,23,0.18)] px-5 py-5 text-white">
+                  <div className="relative aspect-[3.375/2.125] overflow-hidden bg-[rgba(28,25,23,0.18)] px-5 py-5 text-white">
                     <div className="flex h-full flex-col">
                       <div className="flex items-start justify-between gap-3">
                         <div>

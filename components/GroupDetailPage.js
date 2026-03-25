@@ -1013,7 +1013,7 @@ export default function GroupDetailPage({ groupId }) {
                   </div>
                   <div className="rounded-[22px] bg-white/16 p-4">
                     <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/70">
-                      Total spend
+                      Total spent
                     </div>
                     <div className="mt-2 text-[30px] font-bold tracking-[-0.05em] text-white">
                       {formatCurrency(totalSpent)}
