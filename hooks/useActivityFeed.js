@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { readRuntimeCache, writeRuntimeCache } from "../lib/runtimeCache";
 import { computeExpenseShares, getExpenseEmoji, getExpenseTitle } from "../lib/utils";
@@ -14,6 +14,13 @@ export default function useActivityFeed(user, limit = 10) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const bypassCacheRef = useRef(false);
+
+  const refresh = useCallback(() => {
+    bypassCacheRef.current = true;
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     if (!supabase || !user) {
@@ -24,7 +31,9 @@ export default function useActivityFeed(user, limit = 10) {
 
     let isMounted = true;
     const cacheKey = `activity:${user.id}:${limit}`;
-    const cachedItems = readRuntimeCache(cacheKey, 15000);
+    const shouldBypass = bypassCacheRef.current;
+    bypassCacheRef.current = false;
+    const cachedItems = shouldBypass ? null : readRuntimeCache(cacheKey, 15000);
 
     if (cachedItems) {
       setItems(cachedItems);
@@ -200,11 +209,12 @@ export default function useActivityFeed(user, limit = 10) {
     return () => {
       isMounted = false;
     };
-  }, [limit, user]);
+  }, [limit, user, refreshKey]);
 
   return {
     items,
     isLoading,
     error,
+    refresh,
   };
 }

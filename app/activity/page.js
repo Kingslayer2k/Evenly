@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import useActivityFeed from "../../hooks/useActivityFeed";
 import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 import { pageTransition } from "../../lib/animations";
 import { supabase } from "../../lib/supabase";
 
@@ -68,7 +69,8 @@ export default function ActivityPage() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const { items, isLoading, error } = useActivityFeed(user, 40);
+  const { items, isLoading, error, refresh } = useActivityFeed(user, 40);
+  const { pullY, isRefreshing } = usePullToRefresh(refresh);
 
   useEffect(() => {
     if (!supabase) return;
@@ -157,6 +159,18 @@ export default function ActivityPage() {
       </header>
 
       <div className="mx-auto w-full max-w-[460px] px-6 pt-5">
+        <div
+          className="flex items-end justify-center overflow-hidden transition-[height] duration-150"
+          style={{ height: isRefreshing ? 44 : pullY > 0 ? Math.round(pullY * 0.7) : 0 }}
+        >
+          <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] shadow-sm ${isRefreshing ? "animate-spin" : ""}`}>
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--accent)]" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+              <path d="M20 4v6h-6" />
+            </svg>
+          </div>
+        </div>
+
         {!authReady || isLoading ? (
           <div className="space-y-3">
             {[0, 1, 2].map((item) => (

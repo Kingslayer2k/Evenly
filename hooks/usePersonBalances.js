@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { readRuntimeCache, writeRuntimeCache } from "../lib/runtimeCache";
 import { supabase } from "../lib/supabase";
 import { computeExpenseShares } from "../lib/utils";
@@ -23,6 +23,13 @@ export default function usePersonBalances(user) {
   const [people, setPeople] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const bypassCacheRef = useRef(false);
+
+  const refresh = useCallback(() => {
+    bypassCacheRef.current = true;
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     if (!supabase || !user) {
@@ -33,7 +40,9 @@ export default function usePersonBalances(user) {
 
     let isMounted = true;
     const cacheKey = `people-balances:${user.id}`;
-    const cachedPeople = readRuntimeCache(cacheKey, 15000);
+    const shouldBypass = bypassCacheRef.current;
+    bypassCacheRef.current = false;
+    const cachedPeople = shouldBypass ? null : readRuntimeCache(cacheKey, 15000);
 
     if (cachedPeople) {
       setPeople(cachedPeople);
@@ -306,11 +315,12 @@ export default function usePersonBalances(user) {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, refreshKey]);
 
   return {
     people,
     isLoading,
     error,
+    refresh,
   };
 }

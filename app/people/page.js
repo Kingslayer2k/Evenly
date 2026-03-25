@@ -9,6 +9,7 @@ import PersonCard from "../../components/PersonCard";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import useLowPerformanceMode from "../../hooks/useLowPerformanceMode";
 import usePersonBalances from "../../hooks/usePersonBalances";
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 import { createContactRecord } from "../../lib/groupData";
 import { pageTransition } from "../../lib/animations";
 import { supabase } from "../../lib/supabase";
@@ -57,7 +58,8 @@ export default function PeoplePage() {
   const [query, setQuery] = useState("");
   const [isAddPersonOpen, setIsAddPersonOpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(720);
-  const { people, isLoading, error } = usePersonBalances(user);
+  const { people, isLoading, error, refresh } = usePersonBalances(user);
+  const { pullY, isRefreshing } = usePullToRefresh(refresh);
   const debouncedQuery = useDebouncedValue(query, 300);
 
   useEffect(() => {
@@ -187,6 +189,18 @@ export default function PeoplePage() {
       </header>
 
       <div className="mx-auto w-full max-w-[460px] pt-4 pb-28">
+        <div
+          className="flex items-end justify-center overflow-hidden transition-[height] duration-150"
+          style={{ height: isRefreshing ? 44 : pullY > 0 ? Math.round(pullY * 0.7) : 0 }}
+        >
+          <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] shadow-sm ${isRefreshing ? "animate-spin" : ""}`}>
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--accent)]" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+              <path d="M20 4v6h-6" />
+            </svg>
+          </div>
+        </div>
+
         {isLoading || !authReady ? <PeopleSkeleton /> : null}
 
         {!isLoading && authReady && !user ? (
