@@ -329,11 +329,69 @@ function SlideContent({ slide, group, members, expenses, summary, paidByMember, 
   }
 }
 
+function parseGradientColors(gradientClass) {
+  const matches = gradientClass.match(/#[0-9a-fA-F]{6}/g) || [];
+  if (matches.length >= 2) return [matches[0], matches[1]];
+  if (matches.length === 1) return [matches[0], matches[0]];
+  return ["#1a2e22", "#2d4a35"];
+}
+
+async function generateShareCard({ group, totalSpentCents, members, expenses, gradientClass }) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1080;
+  const ctx = canvas.getContext("2d");
+
+  const [colorFrom, colorVia] = parseGradientColors(gradientClass);
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+  grad.addColorStop(0, colorFrom);
+  grad.addColorStop(0.5, colorVia);
+  grad.addColorStop(1, colorFrom);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1080, 1080);
+
+  // Trip name
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.textAlign = "center";
+  ctx.font = "bold 82px Georgia, serif";
+  const tripName = group?.name || "The Trip";
+  ctx.fillText(tripName, 540, 340);
+
+  // Total spent label
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.font = "600 28px -apple-system, sans-serif";
+  ctx.fillText("TOTAL SPENT TOGETHER", 540, 430);
+
+  // Total amount
+  ctx.fillStyle = "rgba(255,255,255,1)";
+  ctx.font = "bold 120px -apple-system, sans-serif";
+  const dollars = (totalSpentCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  ctx.fillText(dollars, 540, 580);
+
+  // Subtitle
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.font = "500 30px -apple-system, sans-serif";
+  const subtitle = `${members.length} ${members.length === 1 ? "person" : "people"} · ${expenses.length} ${expenses.length === 1 ? "expense" : "expenses"}`;
+  ctx.fillText(subtitle, 540, 650);
+
+  // Branding
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.font = "600 24px -apple-system, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("made with Evenly", 1040, 1040);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/png");
+  });
+}
+
 export default function TripStoryModal({ isOpen, group, members, expenses, summary, onClose }) {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
   const [direction, setDirection] = useState(1);
   const [elapsed, setElapsed] = useState(0);
+  const [isSharing, setIsSharing] = useState(false);
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
   const elapsedAtPauseRef = useRef(0);
@@ -415,6 +473,32 @@ export default function TripStoryModal({ isOpen, group, members, expenses, summa
     setPaused(false);
   }, []);
 
+  const handleShare = useCallback(async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    try {
+      const gradientClass = getGradient(current);
+      const blob = await generateShareCard({ group, totalSpentCents, members, expenses, gradientClass });
+      if (!blob) return;
+      const fileName = `${(group?.name || "trip").replace(/\s+/g, "-").toLowerCase()}-recap.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${group?.name || "Trip"} — recap` });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // User cancelled share or share not supported — silently ignore
+    } finally {
+      setIsSharing(false);
+    }
+  }, [isSharing, current, group, totalSpentCents, members, expenses]);
+
   if (!isOpen) return null;
 
   const gradient = getGradient(current);
@@ -453,16 +537,37 @@ export default function TripStoryModal({ isOpen, group, members, expenses, summa
               </div>
               <div className="text-[14px] font-semibold text-white">{group?.name}</div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
-              aria-label="Close story"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleShare}
+                disabled={isSharing}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 disabled:opacity-50"
+                aria-label="Share trip recap"
+              >
+                {isSharing ? (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 animate-spin" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v6h-6" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <polyline points="16 6 12 2 8 6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+                aria-label="Close story"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

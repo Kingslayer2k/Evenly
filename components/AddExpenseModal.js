@@ -663,13 +663,24 @@ export default function AddExpenseModal({
         <ReceiptScanner
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
-          onUseResult={({ amount: detectedAmount, description }) => {
+          onUseResult={({ amount: detectedAmount, description, sharedCosts }) => {
             if (detectedAmount) {
               setAmount(String(detectedAmount));
             }
             if (description) {
               setSelectedEmoji(getExpenseEmoji({ title: description }));
               setTitle(stripExpenseEmojiPrefix(description));
+            }
+            if (sharedCosts?.length) {
+              const prefilledSharedCosts = sharedCosts.map((cost) => ({
+                id: crypto.randomUUID(),
+                label: cost.name,
+                amountCents: cost.cents,
+              }));
+              setFairSplitDetails({ sharedCosts: prefilledSharedCosts, calculations: [] });
+              setSplitMode("custom");
+              setSplitMethod("fair");
+              setIsFairSplitOpen(true);
             }
             setError("");
           }}

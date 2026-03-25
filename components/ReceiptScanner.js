@@ -36,6 +36,8 @@ export default function ReceiptScanner({ isOpen, onClose, onUseResult }) {
   const [imageUrl, setImageUrl] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
+  const [detectedItems, setDetectedItems] = useState([]);
+  const [detectedSharedCosts, setDetectedSharedCosts] = useState([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -53,6 +55,8 @@ export default function ReceiptScanner({ isOpen, onClose, onUseResult }) {
     setProgress(0);
     setAmount("");
     setDescription("");
+    setDetectedItems([]);
+    setDetectedSharedCosts([]);
     setError("");
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
@@ -77,6 +81,8 @@ export default function ReceiptScanner({ isOpen, onClose, onUseResult }) {
       const result = await scanReceipt(file, setProgress);
       setAmount(formatAmount(result.amount));
       setDescription(result.merchantName || "Receipt");
+      setDetectedItems(result.items || []);
+      setDetectedSharedCosts(result.sharedCosts || []);
       setStep("result");
     } catch (scanError) {
       console.error(scanError);
@@ -192,27 +198,69 @@ export default function ReceiptScanner({ isOpen, onClose, onUseResult }) {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onUseResult?.({
-                    amount,
-                    description,
-                  });
-                  onClose?.();
-                }}
-                className="min-h-11 rounded-[12px] bg-[#5F7D6A] px-4 text-[15px] font-medium text-white transition hover:bg-[#3A4E43]"
-              >
-                Use this
-              </button>
-              <button
-                type="button"
-                onClick={reset}
-                className="min-h-11 rounded-[12px] border border-[#E5E7EB] bg-white px-4 text-[15px] font-medium text-[#6B7280] transition hover:bg-[#F7F7F5]"
-              >
-                Scan again
-              </button>
+            {detectedItems.length > 0 || detectedSharedCosts.length > 0 ? (
+              <div className="mt-4 rounded-[16px] border border-[#E5E7EB] bg-white p-4">
+                {detectedItems.length > 0 ? (
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">Items detected</div>
+                    <div className="mt-2 space-y-1.5">
+                      {detectedItems.map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-[13px] text-[#1C1917]">
+                          <span className="truncate pr-2">{item.name}</span>
+                          <span className="shrink-0 font-medium">${(item.cents / 100).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {detectedSharedCosts.length > 0 ? (
+                  <div className={detectedItems.length > 0 ? "mt-3 border-t border-[#F3F4F6] pt-3" : ""}>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#6B7280]">Tax &amp; fees</div>
+                    <div className="mt-2 space-y-1.5">
+                      {detectedSharedCosts.map((cost, i) => (
+                        <div key={i} className="flex items-center justify-between text-[13px] text-[#1C1917]">
+                          <span className="truncate pr-2">{cost.name}</span>
+                          <span className="shrink-0 font-medium">${(cost.cents / 100).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="mt-5 flex flex-col gap-3">
+              {detectedSharedCosts.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUseResult?.({ amount, description, sharedCosts: detectedSharedCosts });
+                    onClose?.();
+                  }}
+                  className="min-h-11 rounded-[12px] bg-[#5F7D6A] px-4 text-[15px] font-medium text-white transition hover:bg-[#3A4E43]"
+                >
+                  Use these items
+                </button>
+              ) : null}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUseResult?.({ amount, description });
+                    onClose?.();
+                  }}
+                  className="min-h-11 rounded-[12px] border border-[#E5E7EB] bg-white px-4 text-[15px] font-medium text-[#1C1917] transition hover:bg-[#F7F7F5]"
+                >
+                  Use amount
+                </button>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="min-h-11 rounded-[12px] border border-[#E5E7EB] bg-white px-4 text-[15px] font-medium text-[#6B7280] transition hover:bg-[#F7F7F5]"
+                >
+                  Scan again
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
