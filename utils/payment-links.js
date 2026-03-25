@@ -13,31 +13,26 @@ function buildMessageBody({ direction, counterpartyName, amount, groupName, meth
 }
 
 export function buildVenmoLink({ username, amount, note, direction = "pay" }) {
-  if (!username) {
-    return {
-      primaryUrl: "venmo://",
-      fallbackUrl: "https://venmo.com/",
-    };
-  }
-
   const txn = direction === "request" ? "charge" : "pay";
+  if (!username) {
+    return { primaryUrl: "https://venmo.com/", fallbackUrl: "" };
+  }
+  // Use HTTPS universal link — iOS opens the Venmo app if installed, browser otherwise
   return {
-    primaryUrl: `venmo://paycharge?txn=${txn}&recipients=${encodeURIComponent(username)}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`,
-    fallbackUrl: `https://venmo.com/${encodeURIComponent(username)}?txn=${txn}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`,
+    primaryUrl: `https://venmo.com/?txn=${txn}&recipients=${encodeURIComponent(username)}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`,
+    fallbackUrl: "",
   };
 }
 
-export function buildCashAppLink({ cashtag, amount, note }) {
+export function buildCashAppLink({ cashtag }) {
   if (!cashtag) {
-    return {
-      primaryUrl: "cashapp://",
-      fallbackUrl: "https://cash.app/",
-    };
+    return { primaryUrl: "https://cash.app/", fallbackUrl: "" };
   }
-
+  // Use HTTPS universal link — iOS opens Cash App if installed, browser otherwise
+  const tag = cashtag.startsWith("$") ? cashtag.slice(1) : cashtag;
   return {
-    primaryUrl: `cashapp://pay?cash_tag=${encodeURIComponent(cashtag)}&amount=${encodeURIComponent(formatAmount(amount))}&note=${encodeURIComponent(note)}`,
-    fallbackUrl: `https://cash.app/$${encodeURIComponent(cashtag)}/${encodeURIComponent(formatAmount(amount))}`,
+    primaryUrl: `https://cash.app/$${encodeURIComponent(tag)}`,
+    fallbackUrl: "",
   };
 }
 
@@ -73,20 +68,5 @@ export function buildZelleLink({ phone, counterpartyName, amount, groupName, dir
 
 export function openExternalPaymentLink(action) {
   if (typeof window === "undefined" || !action?.primaryUrl) return;
-
-  const { primaryUrl, fallbackUrl } = action;
-  const fallbackTimer = window.setTimeout(() => {
-    if (!fallbackUrl || document.visibilityState === "hidden") return;
-    window.open(fallbackUrl, "_blank", "noopener,noreferrer");
-  }, 1400);
-
-  const clearFallback = () => {
-    window.clearTimeout(fallbackTimer);
-    document.removeEventListener("visibilitychange", clearFallback);
-    window.removeEventListener("pagehide", clearFallback);
-  };
-
-  document.addEventListener("visibilitychange", clearFallback);
-  window.addEventListener("pagehide", clearFallback);
-  window.location.href = primaryUrl;
+  window.open(action.primaryUrl, "_blank", "noopener,noreferrer");
 }
