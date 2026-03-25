@@ -201,35 +201,36 @@ export default function ExpenseDetail({
             ) : null}
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6 flex flex-col gap-3">
             {onEdit ? (
               <button
                 type="button"
                 onClick={() => onEdit?.(expense)}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)] active:scale-[0.99]"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[var(--surface-accent)] px-4 text-[15px] font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft-hover)] active:scale-[0.99]"
               >
                 <EditIcon />
-                Edit
+                Edit expense
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={() => onChangePayer?.(expense)}
-              className={`min-h-11 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)] active:scale-[0.99] ${onEdit ? "" : "col-span-2"}`}
-            >
-              Change who paid
-            </button>
-
-            {canDelete ? (
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setShowDeleteDialog(true)}
-                className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--danger)] bg-transparent px-4 text-[15px] font-medium text-[var(--danger)] transition hover:bg-[color:rgba(220,38,38,0.08)] active:bg-[color:rgba(220,38,38,0.14)]"
+                onClick={() => onChangePayer?.(expense)}
+                className={`min-h-11 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 text-[15px] font-medium text-[var(--text)] transition hover:bg-[var(--surface-muted)] active:scale-[0.99] ${!onEdit ? "col-span-2" : ""}`}
               >
-                <TrashIcon />
-                Delete expense
+                Change who paid
               </button>
-            ) : null}
+              {canDelete ? (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--danger)] bg-transparent px-4 text-[15px] font-medium text-[var(--danger)] transition hover:bg-[color:rgba(220,38,38,0.08)] active:scale-[0.99]"
+                >
+                  <TrashIcon />
+                  Delete
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

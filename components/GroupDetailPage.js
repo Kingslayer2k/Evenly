@@ -101,7 +101,15 @@ function ShareIcon() {
   );
 }
 
-function ExpenseRow({ expense, members, onOpenExpense, onSwitchPayer }) {
+function ChevronRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function ExpenseRow({ expense, members, onOpenExpense }) {
   const payer = members.find((member) => member.id === expense.paid_by);
   const participantCount = Array.isArray(expense.participants) ? expense.participants.length : 0;
   const totalAmount =
@@ -120,51 +128,39 @@ function ExpenseRow({ expense, members, onOpenExpense, onSwitchPayer }) {
       tabIndex={0}
       className="content-auto block w-full rounded-[22px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 text-left transition hover:opacity-95 active:scale-[0.995]"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--surface-accent)] text-[18px]">
+          {getExpenseEmoji(expense)}
+        </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--surface-accent)] text-[18px]">
-              {getExpenseEmoji(expense)}
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-[16px] font-semibold text-[var(--text)]">
-                {getExpenseTitle(expense)}
-              </div>
-              <div className="mt-1 text-[13px] text-[var(--text-muted)]">
-                Paid by {payer?.display_name || "Someone"} • {participantCount || members.length} people • {formatExpenseDate(expense.created_at)}
-              </div>
-            </div>
+          <div className="truncate text-[16px] font-semibold text-[var(--text)]">
+            {getExpenseTitle(expense)}
+          </div>
+          <div className="mt-1 text-[13px] text-[var(--text-muted)]">
+            Paid by {payer?.display_name || "Someone"} · {participantCount || members.length} people
           </div>
         </div>
-
-        <div className="text-right">
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="text-[18px] font-bold tracking-[-0.03em] text-[var(--text)]">
             {formatCurrency(totalAmount)}
           </div>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSwitchPayer(expense);
-            }}
-            className="mt-2 min-h-11 text-[13px] font-semibold text-[var(--accent)] transition hover:opacity-80"
-          >
-            Switch payer
-          </button>
+          <div className="flex items-center gap-0.5 text-[var(--text-soft)]">
+            <span className="text-[11px]">{formatExpenseDate(expense.created_at)}</span>
+            <ChevronRightIcon />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function ExpenseListRow({ index, style, expenses, members, onOpenExpense, onSwitchPayer, ariaAttributes }) {
+function ExpenseListRow({ index, style, expenses, members, onOpenExpense, ariaAttributes }) {
   return (
     <div style={{ ...style, left: 0, right: 0, paddingBottom: 12 }} {...ariaAttributes}>
       <ExpenseRow
         expense={expenses[index]}
         members={members}
         onOpenExpense={onOpenExpense}
-        onSwitchPayer={onSwitchPayer}
       />
     </div>
   );
@@ -1175,7 +1171,6 @@ export default function GroupDetailPage({ groupId }) {
                           expenses,
                           members,
                           onOpenExpense: handleOpenExpense,
-                          onSwitchPayer: handleOpenExpensePayerSwitch,
                         }}
                         overscanCount={4}
                         style={{ height: expenseListHeight, width: "100%" }}
