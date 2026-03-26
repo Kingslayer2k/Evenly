@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
+import { bottomSheet, overlayFade } from "../lib/animations";
+import useBodyScrollLock from "../hooks/useBodyScrollLock";
 import { getExpenseEmoji, stripExpenseEmojiPrefix } from "../lib/utils";
 
 const ReceiptScanner = dynamic(() => import("./ReceiptScanner"), {
@@ -81,6 +84,8 @@ export default function AddExpenseModal({
   const [isFairSplitOpen, setIsFairSplitOpen] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [error, setError] = useState("");
+
+  useBodyScrollLock();
 
   const amountCents = useMemo(() => toCents(amount), [amount]);
 
@@ -198,13 +203,6 @@ export default function AddExpenseModal({
         }
       });
 
-      const fairTotal = Object.values(shares).reduce((sum, value) => sum + Number(value || 0), 0)
-        + Object.values(contactShares).reduce((sum, value) => sum + Number(value || 0), 0);
-
-      if (fairTotal !== amountCents) {
-        setError("The fair split needs to match the expense total.");
-        return;
-      }
     } else if (splitMode === "custom") {
       if (customTotalCents + customContactTotalCents !== amountCents) {
         setError("Custom shares need to add up to the full amount.");
@@ -275,24 +273,21 @@ export default function AddExpenseModal({
     onClose?.();
   }
 
-  function handleContextInputChange(event) {
-    const nextName = event.target.value;
-    setContextName(nextName);
-
-    const matchingContext = (contexts || []).find((context) => {
-      const label = String(context.name || "").trim().toLowerCase();
-      return label === nextName.trim().toLowerCase();
-    });
-
-    setContextId(matchingContext?.id || "");
-  }
-
   return (
-    <div className="fixed inset-0 z-50 bg-[var(--overlay)]" onClick={onClose}>
-      <div
+    <motion.div
+      className="fixed inset-0 z-50 bg-[var(--overlay)]"
+      initial={overlayFade.initial}
+      animate={overlayFade.animate}
+      transition={overlayFade.transition}
+      onClick={onClose}
+    >
+      <motion.div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 max-h-[100dvh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-[calc(var(--safe-bottom)+24px)] shadow-[0_-10px_40px_rgba(28,25,23,0.14)]"
+        className="scroll-sheet fixed inset-x-0 bottom-0 max-h-[100dvh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-6 pt-6 pb-[calc(var(--safe-bottom)+24px)] shadow-[0_-8px_28px_rgba(28,25,23,0.12)]"
+        initial={bottomSheet.initial}
+        animate={bottomSheet.animate}
+        transition={bottomSheet.transition}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[var(--border)]" />
@@ -415,35 +410,10 @@ export default function AddExpenseModal({
               <input
                 type="text"
                 value={contextName}
-                onChange={handleContextInputChange}
+                onChange={(event) => setContextName(event.target.value)}
                 placeholder="Shared, spring break, groceries..."
                 className="mt-2 h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 text-[16px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
-              {(contexts || []).length ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {(contexts || []).map((context) => {
-                    const label = context.name || "Shared";
-                    const active = contextId === context.id || contextName.trim() === label;
-                    return (
-                      <button
-                        key={context.id}
-                        type="button"
-                        onClick={() => {
-                          setContextId(context.id);
-                          setContextName(label);
-                        }}
-                    className={`min-h-11 rounded-full px-3 py-2 text-[13px] font-medium transition ${
-                      active
-                        ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-                        : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-accent)]"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
             </div>
           </div>
 
@@ -657,7 +627,7 @@ export default function AddExpenseModal({
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
 
       {isScannerOpen ? (
         <ReceiptScanner
@@ -721,11 +691,14 @@ export default function AddExpenseModal({
             setSplitMode("custom");
             setSplitMethod("fair");
             setFairSplitDetails(details);
+            if (details.combinedTotalCents > 0) {
+              setAmount(String(details.combinedTotalCents / 100));
+            }
             setError("");
             setIsFairSplitOpen(false);
           }}
         />
       ) : null}
-    </div>
+    </motion.div>
   );
 }

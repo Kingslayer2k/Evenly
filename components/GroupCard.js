@@ -109,7 +109,7 @@ function GroupCard({
 
   return (
     <div
-      className="content-auto group relative w-full overflow-hidden rounded-[28px] border border-white/50 text-left text-white shadow-[0_8px_20px_rgba(28,25,23,0.08),0_20px_40px_rgba(28,25,23,0.12)] transition duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.995]"
+      className="content-auto group relative w-full overflow-hidden rounded-[28px] border border-white/50 text-left text-white shadow-[0_8px_20px_rgba(28,25,23,0.08),0_20px_40px_rgba(28,25,23,0.12)] will-change-transform transition-[transform,box-shadow] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.995]"
       style={{ backgroundColor: group.cardColor }}
     >
       <button

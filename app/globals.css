@@ -2,6 +2,9 @@
 
 :root {
   color-scheme: light;
+  --ease-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 100ms;
+  --duration-normal: 160ms;
   --bg: #f7f7f5;
   --surface: #ffffff;
   --surface-muted: #f3f4f6;
@@ -72,6 +75,9 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  /* antialiased font rendering on all platforms */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 *,
@@ -114,6 +120,41 @@ button,
 [role="button"],
 a {
   touch-action: manipulation;
+  /* Eliminate the gray tap-flash on iOS */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* GPU-composited press feedback — instant on finger down, smooth release */
+button:active,
+[role="button"]:active {
+  transition-duration: 80ms !important;
+}
+
+/* Promote frequently-animated elements to their own compositor layer */
+.will-change-transform {
+  will-change: transform;
+}
+
+/* Force an element onto its own GPU layer — use on fixed/sticky chrome (nav, header).
+   translateZ(0) + backface-visibility prevents iOS repaint during scroll. */
+.gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Tighten transition scope on all interactive elements so only cheap properties animate */
+button,
+[role="button"] {
+  transition-property: transform, opacity, background-color, border-color, color, box-shadow;
+  transition-timing-function: var(--ease-expo);
+  transition-duration: var(--duration-normal);
+}
+
+/* Momentum scroll with rubber-band containment for overlay sheets */
+.scroll-sheet {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .content-auto {
@@ -130,6 +171,9 @@ a {
   *,
   *::before,
   *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }

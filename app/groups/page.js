@@ -529,7 +529,7 @@ export default function GroupsPage() {
       animate={reduceMotion ? undefined : pageTransition.animate}
       transition={pageTransition.transition}
     >
-      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/94 px-5 py-3 backdrop-blur-sm">
+      <header className="gpu-layer sticky top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/94 px-5 py-3 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[460px] items-center justify-between">
           <div>
             <div

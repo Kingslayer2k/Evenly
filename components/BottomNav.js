@@ -85,7 +85,7 @@ export default function BottomNav() {
   if (!shouldShow) return null;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--nav)] backdrop-blur-[20px]">
+    <nav className="gpu-layer fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--nav)] backdrop-blur-[12px]">
       <div className="mx-auto flex min-h-[72px] w-full max-w-[520px] items-center px-1 pb-[max(env(safe-area-inset-bottom),8px)]">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
@@ -95,11 +95,12 @@ export default function BottomNav() {
             <motion.button
               key={item.href}
               type="button"
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring", damping: 20, stiffness: 500, mass: 0.4 }}
               onClick={() => handleNavigate(item.href)}
               onPointerEnter={() => router.prefetch(item.href)}
               aria-label={item.label}
-              className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-2xl"
+              className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-2xl will-change-transform"
             >
               <div className={`relative ${active ? "text-[var(--accent)]" : "text-[var(--text-soft)]"}`}>
                 {active ? <div className="absolute -top-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--accent)]" /> : null}

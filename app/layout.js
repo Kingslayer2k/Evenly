@@ -46,7 +46,7 @@ export default function RootLayout({ children }) {
         ) : null}
       </head>
       <body
-        className="min-h-screen antialiased transition-colors duration-300"
+        className="min-h-screen antialiased"
         style={{
           fontFamily: "Styrene A, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif",
           fontWeight: 500,

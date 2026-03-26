@@ -8,6 +8,7 @@ import RotationCard from "./RotationCard";
 import SettlementCard from "./SettlementCard";
 import { readStoredCardImage } from "../lib/cardAppearance";
 import { supabase } from "../lib/supabase";
+import { readRuntimeCacheStale } from "../lib/runtimeCache";
 import {
   completeRotationRecord,
   createExpenseTemplate,
@@ -224,13 +225,40 @@ export default function GroupDetailPage({ groupId }) {
         return;
       }
 
+      setErrorMessage("");
+
       if (options.refresh) {
         setIsRefreshing(true);
       } else {
-        setIsLoading(true);
+        const staleBundle = readRuntimeCacheStale(`group:${groupId}:${currentUser.id || "anon"}`);
+        if (staleBundle) {
+          setGroup(staleBundle.group);
+          setMembership(staleBundle.membership);
+          setMembers(staleBundle.members);
+          setExpenses(staleBundle.expenses);
+          setContexts(staleBundle.contexts);
+          setRecordedSettlements(staleBundle.recordedSettlements || []);
+          setRotations(staleBundle.rotations || []);
+          setRotationHistory(staleBundle.rotationHistory || []);
+          setCardColor(
+            staleBundle.group?.card_color ||
+              staleBundle.group?.color ||
+              readStoredCardColor(staleBundle.group?.id) ||
+              getStableCardColor(staleBundle.group?.id || staleBundle.group?.name),
+          );
+          setCardImage(
+            staleBundle.group?.card_image ||
+              staleBundle.group?.background_image ||
+              staleBundle.group?.image_url ||
+              readStoredCardImage(staleBundle.group?.id) ||
+              "",
+          );
+          setIsLoading(false);
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
       }
-
-      setErrorMessage("");
 
       try {
         const [bundle, nextContacts] = await Promise.all([
@@ -339,8 +367,17 @@ export default function GroupDetailPage({ groupId }) {
     }
 
     updateViewportHeight();
-    window.addEventListener("resize", updateViewportHeight);
-    return () => window.removeEventListener("resize", updateViewportHeight);
+    // Debounce: iOS fires rapid resize events when the virtual keyboard shows/hides
+    let timer;
+    function handleResize() {
+      clearTimeout(timer);
+      timer = setTimeout(updateViewportHeight, 150);
+    }
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -878,7 +915,7 @@ export default function GroupDetailPage({ groupId }) {
 
   return (
     <main className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[var(--bg)]">
-      <header className="fixed inset-x-0 top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-5 py-4 backdrop-blur-sm">
+      <header className="gpu-layer fixed inset-x-0 top-0 z-30 border-b border-[var(--border)] bg-[color:var(--surface)]/95 px-5 py-4 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[460px] items-center justify-between">
           <button
             type="button"

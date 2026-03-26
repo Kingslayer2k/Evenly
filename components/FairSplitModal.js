@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { bottomSheet, overlayFade } from "../lib/animations";
 import { calculateFairSplit, formatCurrency } from "../lib/utils";
 
 function toCents(value) {
@@ -109,20 +110,21 @@ export default function FairSplitModal({
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-[80] bg-[var(--overlay)]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={overlayFade.initial}
+        animate={overlayFade.animate}
+        exit={overlayFade.exit}
+        transition={overlayFade.transition}
         onClick={onClose}
       >
         <motion.div
           role="dialog"
           aria-modal="true"
           aria-label="Split by items"
-          className="fixed inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-5 pt-5 pb-[calc(var(--safe-bottom)+24px)] shadow-[0_-18px_44px_rgba(28,25,23,0.14)]"
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="scroll-sheet fixed inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-[28px] border border-[var(--border)] bg-[var(--surface)] px-5 pt-5 pb-[calc(var(--safe-bottom)+24px)] shadow-[0_-8px_28px_rgba(28,25,23,0.12)]"
+          initial={bottomSheet.initial}
+          animate={bottomSheet.animate}
+          exit={bottomSheet.exit}
+          transition={bottomSheet.transition}
           onClick={(event) => event.stopPropagation()}
         >
           <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[var(--border)]" />
@@ -149,7 +151,7 @@ export default function FairSplitModal({
               Expense total
             </div>
             <div className="mt-2 text-[28px] font-bold tracking-[-0.04em] text-[var(--accent-strong)]">
-              {formatCurrency(totalCents / 100)}
+              {formatCurrency(calculation.combinedTotalCents / 100)}
             </div>
           </div>
 
@@ -289,7 +291,7 @@ export default function FairSplitModal({
               ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div className="mt-4 grid grid-cols-2 gap-2 text-center">
               <div className="rounded-[16px] bg-[var(--surface-soft)] px-3 py-3">
                 <div className="text-[12px] text-[var(--text-muted)]">Items</div>
                 <div className="mt-1 text-[16px] font-semibold text-[var(--text)]">
@@ -297,24 +299,12 @@ export default function FairSplitModal({
                 </div>
               </div>
               <div className="rounded-[16px] bg-[var(--surface-soft)] px-3 py-3">
-                <div className="text-[12px] text-[var(--text-muted)]">Shared</div>
+                <div className="text-[12px] text-[var(--text-muted)]">Shared costs</div>
                 <div className="mt-1 text-[16px] font-semibold text-[var(--text)]">
                   {formatCurrency(calculation.sharedTotalCents / 100)}
                 </div>
               </div>
-              <div className="rounded-[16px] bg-[var(--surface-soft)] px-3 py-3">
-                <div className="text-[12px] text-[var(--text-muted)]">Difference</div>
-                <div className={`mt-1 text-[16px] font-semibold ${calculation.differenceCents === 0 ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
-                  {formatCurrency(Math.abs(calculation.differenceCents) / 100)}
-                </div>
-              </div>
             </div>
-
-            <p className={`mt-4 text-[14px] ${calculation.isValid ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
-              {calculation.isValid
-                ? "Everything adds up. This split is ready."
-                : "Items plus shared costs need to match the full expense total."}
-            </p>
           </div>
 
           <button
@@ -337,6 +327,7 @@ export default function FairSplitModal({
                   .filter((row) => row.amountCents > 0),
                 calculations: calculation.calculations,
                 participantShares: calculation.participantShares,
+                combinedTotalCents: calculation.combinedTotalCents,
               })
             }
             className="mt-5 flex min-h-[52px] w-full items-center justify-center rounded-full bg-[var(--accent)] px-5 text-[16px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"

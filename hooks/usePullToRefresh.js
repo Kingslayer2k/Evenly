@@ -12,6 +12,7 @@ export default function usePullToRefresh(onRefresh) {
   const startYRef = useRef(0);
   const pullingRef = useRef(false);
   const pullYRef = useRef(0);
+  const rafRef = useRef(null);
   const onRefreshRef = useRef(onRefresh);
 
   useEffect(() => {
@@ -29,19 +30,27 @@ export default function usePullToRefresh(onRefresh) {
       if (!pullingRef.current) return;
       if (window.scrollY > 2) {
         pullingRef.current = false;
-        setPullY(0);
         pullYRef.current = 0;
+        if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+        setPullY(0);
         return;
       }
       const delta = Math.max(0, e.touches[0].clientY - startYRef.current);
       const progress = Math.min(MAX_PULL, Math.round(delta * RESISTANCE));
       pullYRef.current = progress;
-      setPullY(progress);
+      // Batch visual updates to the next animation frame — avoids 60+ setState/sec
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          setPullY(pullYRef.current);
+        });
+      }
     }
 
     async function onTouchEnd() {
       if (!pullingRef.current) return;
       pullingRef.current = false;
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       const y = pullYRef.current;
       setPullY(0);
       pullYRef.current = 0;
@@ -60,6 +69,7 @@ export default function usePullToRefresh(onRefresh) {
     window.addEventListener("touchend", onTouchEnd, { passive: true });
 
     return () => {
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
