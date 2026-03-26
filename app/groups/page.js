@@ -34,6 +34,12 @@ import {
 import { pageTransition } from "../../lib/animations";
 import { readRuntimeCacheStale } from "../../lib/runtimeCache";
 
+// Kick off session fetch before React mounts — shaves off one render cycle on cold load.
+const _sessionPrefetch =
+  typeof window !== "undefined" && supabase
+    ? supabase.auth.getSession()
+    : Promise.resolve({ data: { session: null } });
+
 const CreateGroupModal = dynamic(() => import("../../components/CreateGroupModal"), {
   loading: () => null,
 });
@@ -351,7 +357,7 @@ export default function GroupsPage() {
     let isMounted = true;
 
     async function bootstrapAuth() {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await _sessionPrefetch;
       if (!isMounted) return;
       const nextUser = data.session?.user || null;
       setUser(nextUser);
@@ -361,7 +367,10 @@ export default function GroupsPage() {
 
     void bootstrapAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION and TOKEN_REFRESHED are already handled by bootstrapAuth above.
+      // Only react to real sign-in/sign-out transitions to avoid double-loading data.
+      if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
       const nextUser = session?.user || null;
       setUser(nextUser);
       if (nextUser) void loadGroupsData(nextUser);

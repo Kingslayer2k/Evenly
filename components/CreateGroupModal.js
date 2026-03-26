@@ -83,6 +83,13 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
   }, [isOpen, onClose]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen) return;
     resetState();
   }, [isOpen]);
@@ -210,7 +217,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
         </div>
 
         {currentStep === 0 ? (
-          <div className="flex h-[calc(85vh-56px)] flex-col px-5 pt-6 pb-8">
+          <div className="flex h-[calc(85vh-56px)] flex-col px-5 pt-6 pb-[max(env(safe-area-inset-bottom),32px)]">
             <h2 className="text-[28px] font-bold tracking-[-0.03em] text-[var(--text)]">
               What are you setting up?
             </h2>
@@ -270,7 +277,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
           </div>
         ) : currentStep === 1 ? (
           <div className="flex h-[calc(85vh-56px)] flex-col">
-            <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-6 pt-6 pb-6">
               <h2 className="text-[28px] font-bold text-[var(--text)]">
                 {activeMode === "trip" ? "New trip" : "New home"}
               </h2>
@@ -431,7 +438,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
               ) : null}
             </div>
 
-            <div className="mt-auto border-t border-[var(--border)] bg-[var(--surface)] px-6 py-4">
+            <div className="mt-auto border-t border-[var(--border)] bg-[var(--surface)] px-6 pt-4 pb-[max(env(safe-area-inset-bottom),16px)]">
               <div className="flex justify-end">
                 <button
                   type="button"
@@ -445,7 +452,7 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
             </div>
           </div>
         ) : (
-          <div className="h-[calc(85vh-56px)] overflow-y-auto px-6 pt-6 pb-8">
+          <div className="h-[calc(85vh-56px)] overflow-y-auto overscroll-contain px-6 pt-6 pb-[max(env(safe-area-inset-bottom),32px)]">
             <div className="text-center">
               <div className="text-[48px] leading-none">✓</div>
               <h2 className="mt-4 text-[28px] font-bold text-[var(--text)]">
