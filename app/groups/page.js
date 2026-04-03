@@ -34,11 +34,6 @@ import {
 import { pageTransition } from "../../lib/animations";
 import { readRuntimeCacheStale } from "../../lib/runtimeCache";
 
-// Kick off session fetch before React mounts — shaves off one render cycle on cold load.
-const _sessionPrefetch =
-  typeof window !== "undefined" && supabase
-    ? supabase.auth.getSession()
-    : Promise.resolve({ data: { session: null } });
 
 const CreateGroupModal = dynamic(() => import("../../components/CreateGroupModal"), {
   loading: () => null,
@@ -357,7 +352,7 @@ export default function GroupsPage() {
     let isMounted = true;
 
     async function bootstrapAuth() {
-      const { data } = await _sessionPrefetch;
+      const { data } = await supabase.auth.getSession();
       if (!isMounted) return;
       const nextUser = data.session?.user || null;
       setUser(nextUser);
