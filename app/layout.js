@@ -18,13 +18,13 @@ export const metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Evenly",
   },
 };
 
 export const viewport = {
-  themeColor: "#3A4E43",
+  themeColor: "#0f1412",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
