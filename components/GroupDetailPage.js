@@ -1117,6 +1117,22 @@ export default function GroupDetailPage({ groupId }) {
               </div>
             </section>
 
+            {/* Elevated: Settle up card — always visible */}
+            <SettlementCard summary={summary} onAction={handleOpenSettlement} />
+
+            {/* Smart Split nudge — shown once there's enough history */}
+            {expenses.length >= 3 && (
+              <div className="mt-4 rounded-[22px] border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] text-[var(--accent-strong)]">✦</span>
+                  <div className="text-[14px] font-semibold text-[var(--accent-strong)]">Smart Split ready</div>
+                </div>
+                <div className="mt-1 text-[13px] leading-5 text-[var(--text-muted)]">
+                  Based on {expenses.length} expense{expenses.length === 1 ? "" : "s"}, we know how this group splits. Use it on your next expense.
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 flex w-full rounded-full bg-[var(--surface-muted)] p-1">
               {["expenses", "members", "rotations", "settings"].map((tab) => {
                 const active = detailTab === tab;
@@ -1139,8 +1155,6 @@ export default function GroupDetailPage({ groupId }) {
 
             {detailTab === "expenses" ? (
               <>
-                <SettlementCard summary={summary} onAction={handleOpenSettlement} />
-
                 <section className="mt-6 rounded-[28px] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
                   <div className="flex items-center justify-between gap-4">
                     <div>
@@ -1508,6 +1522,7 @@ export default function GroupDetailPage({ groupId }) {
           initialPayerId={membership?.id}
           rotations={rotations}
           groupType={isTrip ? "trip" : "group"}
+          expenses={expenses}
         />
       ) : null}
 
@@ -1523,6 +1538,7 @@ export default function GroupDetailPage({ groupId }) {
           initialPayerId={membership?.id}
           rotations={rotations}
           initialExpense={expenseToEdit}
+          expenses={expenses}
         />
       ) : null}
 
