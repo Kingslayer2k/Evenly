@@ -5,12 +5,15 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { bottomSheet, overlayFade } from "../lib/animations";
 import useBodyScrollLock from "../hooks/useBodyScrollLock";
-import { getExpenseEmoji, stripExpenseEmojiPrefix } from "../lib/utils";
+import { calculateSmartSplit, getExpenseEmoji, stripExpenseEmojiPrefix } from "../lib/utils";
 
 const ReceiptScanner = dynamic(() => import("./ReceiptScanner"), {
   loading: () => null,
 });
 const FairSplitModal = dynamic(() => import("./FairSplitModal"), {
+  loading: () => null,
+});
+const SmartSplitModal = dynamic(() => import("./SmartSplitModal"), {
   loading: () => null,
 });
 
@@ -33,6 +36,7 @@ export default function AddExpenseModal({
   rotations = [],
   initialExpense = null,
   groupType = "group",
+  expenses = [],
 }) {
   const memberIds = (members || []).map((member) => member.id);
   const contactIds = (contacts || []).map((contact) => contact.id);
@@ -82,12 +86,18 @@ export default function AddExpenseModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isFairSplitOpen, setIsFairSplitOpen] = useState(false);
+  const [isSmartSplitOpen, setIsSmartSplitOpen] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [error, setError] = useState("");
 
   useBodyScrollLock();
 
   const amountCents = useMemo(() => toCents(amount), [amount]);
+
+  const smartSplitResult = useMemo(
+    () => (members?.length ? calculateSmartSplit(members, expenses, amountCents || 10000) : null),
+    [members, expenses, amountCents],
+  );
 
   const selectedMembers = useMemo(
     () => (members || []).filter((member) => selectedParticipants.includes(member.id)),
@@ -419,42 +429,118 @@ export default function AddExpenseModal({
 
           <div>
             <div className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-              Split
+              How to split
             </div>
-            <div className="mt-2 inline-flex rounded-full bg-[var(--surface-muted)] p-1">
-              {["equal", "custom"].map((mode) => {
-                const active = splitMode === mode;
+
+            {/* Smart Split hero card */}
+            <button
+              type="button"
+              onClick={() => {
+                if (splitMethod === "smart") {
+                  setIsSmartSplitOpen(true);
+                } else {
+                  setSplitMode("custom");
+                  setSplitMethod("smart");
+                  setFairSplitDetails(null);
+                  if (smartSplitResult?.shares) {
+                    const next = { ...customAmounts };
+                    for (const [id, cents] of Object.entries(smartSplitResult.shares)) {
+                      next[id] = (Number(cents) / 100).toFixed(2);
+                    }
+                    setCustomAmounts(next);
+                    setSelectedParticipants(members.map((m) => m.id));
+                  }
+                }
+              }}
+              className={`mt-2 w-full rounded-[20px] p-4 text-left transition active:scale-[0.99] ${
+                splitMethod === "smart"
+                  ? "bg-[linear-gradient(135deg,var(--accent),#2d4438)] text-white"
+                  : "border border-[var(--border)] bg-[linear-gradient(135deg,var(--surface-accent),var(--surface-muted))]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={splitMethod === "smart" ? "text-white/80" : "text-[var(--accent-strong)]"}>✦</span>
+                    <span className={`text-[16px] font-bold ${splitMethod === "smart" ? "text-white" : "text-[var(--text)]"}`}>
+                      Smart Split
+                    </span>
+                  </div>
+                  <div className={`mt-0.5 text-[12px] ${splitMethod === "smart" ? "text-white/70" : "text-[var(--text-muted)]"}`}>
+                    Based on your group&apos;s history
+                  </div>
+                </div>
+                {splitMethod === "smart" && (
+                  <div className="rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[12px] font-semibold text-white">
+                    Selected
+                  </div>
+                )}
+              </div>
+              {smartSplitResult?.shares && members.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {members.slice(0, 4).map((member) => {
+                    const cents = Number(smartSplitResult.shares[member.id] || 0);
+                    const total = Object.values(smartSplitResult.shares).reduce((s, c) => s + Number(c), 0);
+                    const pct = total > 0 ? Math.round((cents / total) * 100) : 0;
+                    return (
+                      <span
+                        key={member.id}
+                        className={`rounded-full px-2.5 py-1 text-[12px] font-medium ${
+                          splitMethod === "smart"
+                            ? "bg-white/15 text-white/90"
+                            : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                        }`}
+                      >
+                        {member.display_name} · {pct}%
+                      </span>
+                    );
+                  })}
+                  {members.length > 4 && (
+                    <span className={`rounded-full px-2.5 py-1 text-[12px] font-medium ${splitMethod === "smart" ? "bg-white/15 text-white/90" : "bg-[var(--surface-muted)] text-[var(--text-muted)]"}`}>
+                      +{members.length - 4} more
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className={`mt-2 text-[11px] ${splitMethod === "smart" ? "text-white/50" : "text-[var(--text-muted)]"}`}>
+                {splitMethod === "smart" ? "Tap to preview full breakdown →" : "Tap to apply suggested split →"}
+              </div>
+            </button>
+
+            {/* Secondary split mode pills */}
+            <div className="mt-2 flex gap-2">
+              {[
+                { key: "equal", label: "Equal" },
+                { key: "custom", label: "Custom" },
+                { key: "fair", label: "By items" },
+              ].map(({ key, label }) => {
+                const active = key === "fair"
+                  ? splitMethod === "fair"
+                  : splitMethod === key || (key === "custom" && splitMode === "custom" && splitMethod !== "fair" && splitMethod !== "smart");
                 return (
                   <button
-                    key={mode}
+                    key={key}
                     type="button"
                     onClick={() => {
-                      setSplitMode(mode);
-                      setSplitMethod(mode);
-                      setFairSplitDetails(null);
+                      if (key === "fair") {
+                        setIsFairSplitOpen(true);
+                      } else {
+                        setSplitMode(key);
+                        setSplitMethod(key);
+                        setFairSplitDetails(null);
+                      }
                     }}
-                    className={`rounded-full px-4 py-2 text-[14px] font-semibold capitalize transition ${
+                    className={`flex-1 rounded-[12px] border py-2.5 text-[13px] font-semibold transition ${
                       active
-                        ? "bg-[var(--surface)] text-[var(--text)] shadow-[0_2px_6px_rgba(28,25,23,0.08)]"
-                        : "text-[var(--text-muted)]"
+                        ? "border-[var(--accent)] bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                        : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)]"
                     }`}
                   >
-                    {mode}
+                    {label}
                   </button>
                 );
               })}
             </div>
-            <button
-              type="button"
-              onClick={() => setIsFairSplitOpen(true)}
-              className={`mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-[14px] font-semibold transition ${
-                splitMethod === "fair"
-                  ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-                  : "bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface-accent)]"
-              }`}
-            >
-              Split by items
-            </button>
           </div>
 
           <div>
@@ -696,6 +782,26 @@ export default function AddExpenseModal({
             }
             setError("");
             setIsFairSplitOpen(false);
+          }}
+        />
+      ) : null}
+
+      {isSmartSplitOpen && smartSplitResult ? (
+        <SmartSplitModal
+          isOpen={isSmartSplitOpen}
+          onClose={() => setIsSmartSplitOpen(false)}
+          result={smartSplitResult}
+          members={members}
+          onApply={(result) => {
+            const next = { ...customAmounts };
+            for (const [id, cents] of Object.entries(result.shares)) {
+              next[id] = (Number(cents) / 100).toFixed(2);
+            }
+            setCustomAmounts(next);
+            setSelectedParticipants(members.map((m) => m.id));
+            setSplitMode("custom");
+            setSplitMethod("smart");
+            setIsSmartSplitOpen(false);
           }}
         />
       ) : null}
