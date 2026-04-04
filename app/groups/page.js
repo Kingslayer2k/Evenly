@@ -689,15 +689,21 @@ export default function GroupsPage() {
         ) : (
           <div>
             {/* Net balance hero */}
-            <div className="mb-4 rounded-[24px] bg-[linear-gradient(135deg,var(--accent),#2d4438)] p-5 text-center shadow-[var(--shadow-soft)]">
-              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/70">Net balance</div>
+            <div
+              className={`mb-4 rounded-[24px] p-5 text-center shadow-[var(--shadow-soft)] ${
+                netBalanceCents < 0
+                  ? "border border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.1)]"
+                  : "bg-[linear-gradient(135deg,var(--accent),#2d4438)]"
+              }`}
+            >
+              <div className={`text-[12px] font-semibold uppercase tracking-[0.1em] ${netBalanceCents < 0 ? "text-[rgba(248,113,113,0.7)]" : "text-white/70"}`}>Net balance</div>
               <div
                 className={`mt-1 text-[40px] font-bold tracking-[-0.05em] ${netBalanceCents < 0 ? "text-[#f87171]" : "text-white"}`}
               >
                 {netBalanceCents < 0 ? "-" : netBalanceCents > 0 ? "+" : ""}
                 {formatCurrency(Math.abs(netBalanceCents) / 100)}
               </div>
-              <div className="mt-1 text-[13px] text-white/60">
+              <div className={`mt-1 text-[13px] ${netBalanceCents < 0 ? "text-[rgba(248,113,113,0.6)]" : "text-white/60"}`}>
                 across {displayGroups.length} active {displayGroups.length === 1 ? "group" : "groups"}
               </div>
               {worstDebt && (
