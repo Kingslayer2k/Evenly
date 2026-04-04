@@ -398,8 +398,8 @@ export default function CreateGroupModal({ isOpen, onClose, onCreate, mode = "ch
                     />
                   ) : null}
 
-                  <div className="relative aspect-[3.375/2.125] bg-[rgba(28,25,23,0.18)] px-5 py-5 text-white">
-                    <div className="flex h-full flex-col">
+                  <div className="relative bg-[rgba(28,25,23,0.18)] px-5 py-5 text-white">
+                    <div className="flex min-h-[170px] flex-col">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div
