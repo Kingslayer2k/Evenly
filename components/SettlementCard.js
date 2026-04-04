@@ -15,28 +15,33 @@ function SettlementRow({ item, variant, onAction }) {
   const isOwe = variant === "owe";
 
   return (
-    <div className="border-b border-[var(--border-soft)] py-3 last:border-b-0">
+    <div className={`rounded-[18px] border p-4 ${isOwe ? "border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.06)]" : "border-[var(--border)] bg-[var(--surface-soft)]"}`}>
       <div className="flex items-center justify-between gap-4">
-        <div className="text-[15px] font-medium text-[var(--text)]">
-          {isOwe ? `You owe ${item.toName}` : `${item.fromName} owes you`}
+        <div>
+          <div className={`text-[11px] font-semibold uppercase tracking-[0.1em] ${isOwe ? "text-[var(--danger)]" : "text-[var(--text-muted)]"}`}>
+            {isOwe ? "You owe" : "Owed to you"}
+          </div>
+          <div className={`mt-1 text-[22px] font-bold tracking-[-0.04em] ${isOwe ? "text-[var(--danger)]" : "text-[var(--accent-strong)]"}`}>
+            {formatCurrency(item.amount)}
+          </div>
+          <div className={`mt-0.5 text-[13px] ${isOwe ? "text-[rgba(248,113,113,0.6)]" : "text-[var(--text-muted)]"}`}>
+            {isOwe ? `to ${item.toName}` : `from ${item.fromName}`}
+          </div>
         </div>
-        <div className={`text-[17px] font-bold ${isOwe ? "text-[var(--warning)]" : "text-[var(--accent-strong)]"}`}>
-          {formatCurrency(item.amount)}
-        </div>
-      </div>
 
-      <button
-        type="button"
-        onClick={() => onAction?.(item, isOwe ? "pay" : "request")}
-        className={`mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[8px] px-4 text-[14px] font-medium transition active:scale-[0.99] ${
-          isOwe
-            ? "bg-[var(--accent)] text-white hover:opacity-90"
-            : "bg-[var(--surface-accent)] text-[var(--accent-strong)] hover:bg-[var(--accent-soft-hover)]"
-        }`}
-      >
-        <span>{isOwe ? `Pay ${item.toName}` : `Request from ${item.fromName}`}</span>
-        <ArrowIcon />
-      </button>
+        <button
+          type="button"
+          onClick={() => onAction?.(item, isOwe ? "pay" : "request")}
+          className={`inline-flex min-h-11 items-center gap-2 rounded-[12px] px-4 text-[14px] font-semibold transition active:scale-[0.99] ${
+            isOwe
+              ? "border border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.12)] text-[var(--danger)] hover:bg-[rgba(248,113,113,0.18)]"
+              : "bg-[var(--surface-accent)] text-[var(--accent-strong)] hover:bg-[var(--accent-soft-hover)]"
+          }`}
+        >
+          <span>{isOwe ? `Pay ${item.toName}` : `Request`}</span>
+          <ArrowIcon />
+        </button>
+      </div>
     </div>
   );
 }
@@ -49,7 +54,7 @@ export default function SettlementCard({ summary, onAction }) {
       <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Settle up</div>
 
       {hasItems ? (
-        <div className="mt-4">
+        <div className="mt-4 space-y-3">
           {(summary?.youOwe || []).map((item) => (
             <SettlementRow
               key={`owe-${item.fromMemberId}-${item.toMemberId}`}
