@@ -25,9 +25,11 @@ import {
 import {
   computeBalancesForGroup,
   formatBalance,
+  formatCurrency,
   formatCurrencyCompact,
   getMemberPreview,
   getStableCardColor,
+  getUserSettlementSummary,
   needsAttention,
   sumGroupTotal,
 } from "../../lib/utils";
@@ -438,6 +440,28 @@ export default function GroupsPage() {
 
   const stackGap = 64;
 
+  const netBalanceCents = useMemo(
+    () => displayGroups.reduce((sum, group) => sum + Math.round((group.balance || 0) * 100), 0),
+    [displayGroups],
+  );
+
+  const worstDebt = useMemo(() => {
+    let largest = null;
+    for (const group of displayGroups) {
+      const groupMembers = membersByGroup[group.id] || [];
+      const groupExpenses = expensesByGroup[group.id] || [];
+      const myMembership = memberships.find((m) => m.group_id === group.id);
+      if (!myMembership) continue;
+      const summary = getUserSettlementSummary(groupMembers, groupExpenses, myMembership, []);
+      for (const item of summary.youOwe) {
+        if (!largest || item.amount > largest.amount) {
+          largest = { ...item, groupId: group.id, groupName: group.name };
+        }
+      }
+    }
+    return largest;
+  }, [displayGroups, membersByGroup, expensesByGroup, memberships]);
+
   useEffect(() => {
     displayGroups.slice(0, 4).forEach((group) => router.prefetch(`/groups/${group.id}`));
   }, [displayGroups, router]);
@@ -664,6 +688,51 @@ export default function GroupsPage() {
           </div>
         ) : (
           <div>
+            {/* Net balance hero */}
+            <div className="mb-4 rounded-[24px] bg-[linear-gradient(135deg,var(--accent),#2d4438)] p-5 text-center shadow-[var(--shadow-soft)]">
+              <div className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/70">Net balance</div>
+              <div
+                className={`mt-1 text-[40px] font-bold tracking-[-0.05em] ${netBalanceCents < 0 ? "text-[#f87171]" : "text-white"}`}
+              >
+                {netBalanceCents < 0 ? "-" : netBalanceCents > 0 ? "+" : ""}
+                {formatCurrency(Math.abs(netBalanceCents) / 100)}
+              </div>
+              <div className="mt-1 text-[13px] text-white/60">
+                across {displayGroups.length} active {displayGroups.length === 1 ? "group" : "groups"}
+              </div>
+              {worstDebt && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/groups/${worstDebt.groupId}`)}
+                  className="mt-3 rounded-full border border-[rgba(248,113,113,0.4)] bg-[rgba(248,113,113,0.15)] px-4 py-2 text-[13px] font-semibold text-[#f87171] transition hover:bg-[rgba(248,113,113,0.22)]"
+                >
+                  Settle everything →
+                </button>
+              )}
+            </div>
+
+            {/* Action needed */}
+            {worstDebt && (
+              <div className="mb-4 rounded-[22px] border border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.06)] p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--danger)]">Action needed</div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[14px] font-semibold text-[var(--text)]">
+                      You owe {worstDebt.toName} {formatCurrency(worstDebt.amount)}
+                    </div>
+                    <div className="mt-0.5 text-[12px] text-[rgba(248,113,113,0.7)]">{worstDebt.groupName}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/groups/${worstDebt.groupId}`)}
+                    className="rounded-[10px] border border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.12)] px-4 py-2.5 text-[13px] font-semibold text-[var(--danger)] transition hover:bg-[rgba(248,113,113,0.18)]"
+                  >
+                    Pay →
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="mx-auto w-[88%] max-w-[360px]">
               <div className="relative" style={{ height: `${stackHeight}px` }}>
                 {displayGroups.map((group, index) => (
