@@ -66,6 +66,14 @@ export function buildZelleLink({ phone, counterpartyName, amount, groupName, dir
   };
 }
 
+export function buildPayPalLink() {
+  // Opens PayPal send-money flow. No recipient pre-fill without a PayPal.me handle.
+  return {
+    primaryUrl: "https://www.paypal.com/myaccount/transfer/homepage/pay",
+    fallbackUrl: "https://www.paypal.com/",
+  };
+}
+
 export function openExternalPaymentLink(action) {
   if (typeof window === "undefined" || !action?.primaryUrl) return;
   window.open(action.primaryUrl, "_blank", "noopener,noreferrer");

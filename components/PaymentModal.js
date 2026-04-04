@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   buildAppleCashLink,
   buildCashAppLink,
+  buildPayPalLink,
   buildVenmoLink,
   buildZelleLink,
   openExternalPaymentLink,
@@ -118,6 +119,12 @@ export default function PaymentModal({
         }),
       },
       {
+        key: "paypal",
+        label: "PayPal",
+        emoji: "🅿️",
+        action: buildPayPalLink(),
+      },
+      {
         key: "cash",
         label: "Cash / Other",
         emoji: "💸",
@@ -148,6 +155,9 @@ export default function PaymentModal({
         <div className="mt-2 text-[32px] font-bold tracking-[-0.05em] text-[var(--accent)]">
           {formatCurrency(amount)}
         </div>
+        <p className="mt-1 text-[13px] text-[var(--text-muted)]">
+          Open the app and send {counterpartyName} this amount
+        </p>
 
         {!chosenMethod ? (
           <>
@@ -166,11 +176,24 @@ export default function PaymentModal({
                       openExternalPaymentLink(method.action);
                     }
                   }}
-                  className="flex min-h-14 w-full items-center justify-between rounded-[12px] border border-[var(--border)] bg-[var(--surface-muted)] px-4 text-left transition hover:opacity-90 active:scale-[0.99]"
+                  className={`flex min-h-14 w-full items-center justify-between rounded-[12px] border px-4 text-left transition hover:opacity-90 active:scale-[0.99] ${
+                    method.key === "venmo"
+                      ? "border-[#2a3a55] bg-[#1a2235]"
+                      : method.key === "cash_app"
+                        ? "border-[#2a4030] bg-[#162218]"
+                        : method.key === "paypal"
+                          ? "border-[#222a44] bg-[#141828]"
+                          : "border-[var(--border)] bg-[var(--surface-muted)]"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-[22px]">{method.emoji}</span>
-                    <span className="text-[16px] font-medium text-[var(--text)]">{method.label}</span>
+                    <span className={`text-[16px] font-medium ${
+                      method.key === "venmo" ? "text-[#9ab0cc]"
+                      : method.key === "cash_app" ? "text-[#7a9e84]"
+                      : method.key === "paypal" ? "text-[#8a9ab8]"
+                      : "text-[var(--text)]"
+                    }`}>{method.label}</span>
                   </div>
                   <ChevronIcon />
                 </button>
